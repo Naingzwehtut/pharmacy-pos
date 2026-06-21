@@ -32,22 +32,30 @@ export default function POS() {
     setError('')
     setCart((prev) => {
       const existing = prev.find((c) => c.medicine_id === medicine.id)
+
       if (existing) {
         if (existing.quantity >= medicine.stock_quantity) {
           setError(`Only ${medicine.stock_quantity} in stock for ${medicine.name}`)
           return prev
         }
+
         return prev.map((c) =>
-          c.medicine_id === medicine.id ? { ...c, quantity: c.quantity + 1 } : c
+          c.medicine_id === medicine.id
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
         )
       }
-      return [...prev, {
-        medicine_id: medicine.id,
-        name: medicine.name,
-        selling_price: medicine.selling_price,
-        stock_quantity: medicine.stock_quantity,
-        quantity: 1,
-      }]
+
+      return [
+        ...prev,
+        {
+          medicine_id: medicine.id,
+          name: medicine.name,
+          selling_price: medicine.selling_price,
+          stock_quantity: medicine.stock_quantity,
+          quantity: 1,
+        },
+      ]
     })
   }
 
@@ -56,12 +64,16 @@ export default function POS() {
       prev
         .map((c) => {
           if (c.medicine_id !== medicineId) return c
+
           const newQty = c.quantity + delta
+
           if (newQty <= 0) return null
+
           if (newQty > c.stock_quantity) {
             setError(`Only ${c.stock_quantity} in stock`)
             return c
           }
+
           return { ...c, quantity: newQty }
         })
         .filter(Boolean)
@@ -72,20 +84,25 @@ export default function POS() {
     setCart((prev) => prev.filter((c) => c.medicine_id !== medicineId))
   }
 
-  const cartTotal = cart.reduce((sum, c) => sum + c.selling_price * c.quantity, 0)
+  const cartTotal = cart.reduce(
+    (sum, c) => sum + c.selling_price * c.quantity,
+    0
+  )
 
   const handleCheckout = async () => {
     if (cart.length === 0) return
+
     setCheckoutLoading(true)
     setError('')
+
     try {
-      const itemsPayload = cart.map((c) => ({ 
-        medicine_id: c.medicine_id, 
-        quantity: c.quantity 
+      const itemsPayload = cart.map((c) => ({
+        medicine_id: c.medicine_id,
+        quantity: c.quantity,
       }))
 
       const sale = await api.checkout(itemsPayload)
-      
+
       setCart([])
       setCompletedSale(sale)
       loadMedicines()
@@ -105,6 +122,7 @@ export default function POS() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="pos-layout">
+        {/* LEFT SIDE */}
         <div>
           <div className="search-bar">
             <input
@@ -122,97 +140,131 @@ export default function POS() {
             ) : medicines.length === 0 ? (
               <div className="empty-state">No medicines found</div>
             ) : (
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Category</th>
-                      <th className="num">Stock</th>
-                      <th className="num">Price</th>
-                      <th>Expiry</th>
-                      <th></th>
+              <table className="data-table pos-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th className="num">Stock</th>
+                    <th className="num">Price</th>
+                    <th>Expiry</th>
+                    <th></th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {medicines.map((m) => (
+                    <tr key={m.id}>
+                      <td>{m.name}</td>
+                      <td>{m.category}</td>
+                      <td className="num">{m.stock_quantity}</td>
+                      <td className="num">
+                        MMK{m.selling_price.toFixed(2)}
+                      </td>
+                      <td>
+                        {m.expiry_status === 'warning' && (
+                          <span className="badge badge-warning">
+                            Expiring soon
+                          </span>
+                        )}
+                        {m.expiry_status === 'ok' && (
+                          <span className="text-muted">
+                            {m.expiry_date}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => addToCart(m)}
+                        >
+                          Add
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {medicines.map((m) => (
-                      <tr key={m.id}>
-                        <td>{m.name}</td>
-                        <td>{m.category}</td>
-                        <td className="num">{m.stock_quantity}</td>
-                        <td className="num">MMK{m.selling_price.toFixed(2)}</td>
-                        <td>
-                          {m.expiry_status === 'warning' && (
-                            <span className="badge badge-warning">Expiring soon</span>
-                          )}
-                          {m.expiry_status === 'ok' && (
-                            <span className="text-muted">{m.expiry_date}</span>
-                          )}
-                        </td>
-                        <td>
-                          <button type="button" className="btn btn-sm btn-primary" onClick={() => addToCart(m)}>
-                            Add
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
 
+        {/* RIGHT SIDE CART */}
         <div className="card">
           <div className="card-title">Current Sale</div>
+
           {cart.length === 0 ? (
             <div className="empty-state">Cart is empty</div>
           ) : (
             <>
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th className="num">Qty</th>
-                      <th className="num">Price</th>
-                      <th className="num">Subtotal</th>
-                      <th style={{ width: '40px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cart.map((c) => (
-                      <tr key={c.medicine_id}>
-                        <td style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.name}
-                        </td>
-                        <td className="num">
-                          <div className="qty-control">
-                            <button type="button" onClick={() => updateQty(c.medicine_id, -1)}>−</button>
-                            <span>{c.quantity}</span>
-                            <button type="button" onClick={() => updateQty(c.medicine_id, 1)}>+</button>
-                          </div>
-                        </td>
-                        <td className="num">MMK{c.selling_price.toFixed(2)}</td>
-                        <td className="num">MMK{(c.selling_price * c.quantity).toFixed(2)}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          {/* Updated responsive button */}
-                          <button 
-                            type="button" 
-                            className="btn btn-sm btn-danger btn-responsive-remove" 
-                            onClick={() => removeFromCart(c.medicine_id)}
-                            title="Remove item"
+              <table className="data-table pos-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="num">Qty</th>
+                    <th className="num">Price</th>
+                    <th className="num">Subtotal</th>
+                    <th className="action-col"></th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {cart.map((c) => (
+                    <tr key={c.medicine_id}>
+                      <td>{c.name}</td>
+
+                      <td className="num">
+                        <div className="qty-control">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateQty(c.medicine_id, -1)
+                            }
                           >
-                            <span className="remove-text-full">Remove</span>
-                            <span className="remove-text-short">&times;</span>
+                            −
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <span>{c.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateQty(c.medicine_id, 1)
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="num">
+                        MMK{c.selling_price.toFixed(2)}
+                      </td>
+
+                      <td className="num">
+                        MMK
+                        {(c.selling_price * c.quantity).toFixed(2)}
+                      </td>
+
+                      <td className="action-col">
+                        <button
+                          type="button"
+                          className="remove-btn"
+                          onClick={() =>
+                            removeFromCart(c.medicine_id)
+                          }
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="cart-total">
+                Total: MMK{cartTotal.toFixed(2)}
               </div>
-              <div className="cart-total">Total: MMK{cartTotal.toFixed(2)}</div>
+
               <button
                 type="button"
                 className="btn btn-primary"
@@ -220,7 +272,9 @@ export default function POS() {
                 onClick={handleCheckout}
                 disabled={checkoutLoading}
               >
-                {checkoutLoading ? 'Processing...' : 'Complete Checkout'}
+                {checkoutLoading
+                  ? 'Processing...'
+                  : 'Complete Checkout'}
               </button>
             </>
           )}
@@ -228,7 +282,10 @@ export default function POS() {
       </div>
 
       {completedSale && (
-        <ReceiptModal sale={completedSale} onClose={() => setCompletedSale(null)} />
+        <ReceiptModal
+          sale={completedSale}
+          onClose={() => setCompletedSale(null)}
+        />
       )}
     </div>
   )
