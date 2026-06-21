@@ -79,9 +79,14 @@ export default function POS() {
     setCheckoutLoading(true)
     setError('')
     try {
-      const sale = await api.checkout({
-        items: cart.map((c) => ({ medicine_id: c.medicine_id, quantity: c.quantity })),
-      })
+      // FIX: Map and pass the array directly to api.checkout
+      const itemsPayload = cart.map((c) => ({ 
+        medicine_id: c.medicine_id, 
+        quantity: c.quantity 
+      }))
+
+      const sale = await api.checkout(itemsPayload)
+      
       setCart([])
       setCompletedSale(sale)
       loadMedicines()
