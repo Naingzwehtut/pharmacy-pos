@@ -140,9 +140,9 @@ export default function Inventory() {
                       <span className="badge badge-low" style={{ marginLeft: 4 }}>Low</span>
                     )}
                   </td>
-                  <td className="num">${m.cost_price.toFixed(2)}</td>
-                  <td className="num">${m.selling_price.toFixed(2)}</td>
-                  <td className="num">${m.profit_per_unit.toFixed(2)}</td>
+                  <td className="num">MMK{m.cost_price.toFixed(2)}</td>
+                  <td className="num">MMK{m.selling_price.toFixed(2)}</td>
+                  <td className="num">MMK{m.profit_per_unit.toFixed(2)}</td>
                   <td>{m.expiry_date}</td>
                   <td><ExpiryBadge status={m.expiry_status} /></td>
                   <td>
