@@ -59,7 +59,7 @@ export default function POS() {
           const newQty = c.quantity + delta
           if (newQty <= 0) return null
           if (newQty > c.stock_quantity) {
-            setError(`Only ${c.stock_quantity} in stock`)
+            setError(`Only MMK{c.stock_quantity} in stock`)
             return c
           }
           return { ...c, quantity: newQty }
@@ -189,8 +189,8 @@ export default function POS() {
                           <button type="button" onClick={() => updateQty(c.medicine_id, 1)}>+</button>
                         </div>
                       </td>
-                      <td className="num">${c.selling_price.toFixed(2)}</td>
-                      <td className="num">${(c.selling_price * c.quantity).toFixed(2)}</td>
+                      <td className="num">MMK{c.selling_price.toFixed(2)}</td>
+                      <td className="num">MMK{(c.selling_price * c.quantity).toFixed(2)}</td>
                       <td>
                         <button type="button" className="btn btn-sm btn-danger" onClick={() => removeFromCart(c.medicine_id)}>
                           Remove
@@ -200,7 +200,7 @@ export default function POS() {
                   ))}
                 </tbody>
               </table>
-              <div className="cart-total">Total: ${cartTotal.toFixed(2)}</div>
+              <div className="cart-total">Total: MMK{cartTotal.toFixed(2)}</div>
               <button
                 type="button"
                 className="btn btn-primary"
