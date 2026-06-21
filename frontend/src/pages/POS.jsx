@@ -79,7 +79,6 @@ export default function POS() {
     setCheckoutLoading(true)
     setError('')
     try {
-      // FIX: Map and pass the array directly to api.checkout
       const itemsPayload = cart.map((c) => ({ 
         medicine_id: c.medicine_id, 
         quantity: c.quantity 
@@ -123,41 +122,43 @@ export default function POS() {
             ) : medicines.length === 0 ? (
               <div className="empty-state">No medicines found</div>
             ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th className="num">Stock</th>
-                    <th className="num">Price</th>
-                    <th>Expiry</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {medicines.map((m) => (
-                    <tr key={m.id}>
-                      <td>{m.name}</td>
-                      <td>{m.category}</td>
-                      <td className="num">{m.stock_quantity}</td>
-                      <td className="num">MMK{m.selling_price.toFixed(2)}</td>
-                      <td>
-                        {m.expiry_status === 'warning' && (
-                          <span className="badge badge-warning">Expiring soon</span>
-                        )}
-                        {m.expiry_status === 'ok' && (
-                          <span className="text-muted">{m.expiry_date}</span>
-                        )}
-                      </td>
-                      <td>
-                        <button type="button" className="btn btn-sm btn-primary" onClick={() => addToCart(m)}>
-                          Add
-                        </button>
-                      </td>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th className="num">Stock</th>
+                      <th className="num">Price</th>
+                      <th>Expiry</th>
+                      <th></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {medicines.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.name}</td>
+                        <td>{m.category}</td>
+                        <td className="num">{m.stock_quantity}</td>
+                        <td className="num">MMK{m.selling_price.toFixed(2)}</td>
+                        <td>
+                          {m.expiry_status === 'warning' && (
+                            <span className="badge badge-warning">Expiring soon</span>
+                          )}
+                          {m.expiry_status === 'ok' && (
+                            <span className="text-muted">{m.expiry_date}</span>
+                          )}
+                        </td>
+                        <td>
+                          <button type="button" className="btn btn-sm btn-primary" onClick={() => addToCart(m)}>
+                            Add
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
@@ -168,38 +169,49 @@ export default function POS() {
             <div className="empty-state">Cart is empty</div>
           ) : (
             <>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th className="num">Qty</th>
-                    <th className="num">Price</th>
-                    <th className="num">Subtotal</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.map((c) => (
-                    <tr key={c.medicine_id}>
-                      <td>{c.name}</td>
-                      <td className="num">
-                        <div className="qty-control">
-                          <button type="button" onClick={() => updateQty(c.medicine_id, -1)}>−</button>
-                          <span>{c.quantity}</span>
-                          <button type="button" onClick={() => updateQty(c.medicine_id, 1)}>+</button>
-                        </div>
-                      </td>
-                      <td className="num">MMK{c.selling_price.toFixed(2)}</td>
-                      <td className="num">MMK{(c.selling_price * c.quantity).toFixed(2)}</td>
-                      <td>
-                        <button type="button" className="btn btn-sm btn-danger" onClick={() => removeFromCart(c.medicine_id)}>
-                          Remove
-                        </button>
-                      </td>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th className="num">Qty</th>
+                      <th className="num">Price</th>
+                      <th className="num">Subtotal</th>
+                      <th style={{ width: '40px' }}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {cart.map((c) => (
+                      <tr key={c.medicine_id}>
+                        <td style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.name}
+                        </td>
+                        <td className="num">
+                          <div className="qty-control">
+                            <button type="button" onClick={() => updateQty(c.medicine_id, -1)}>−</button>
+                            <span>{c.quantity}</span>
+                            <button type="button" onClick={() => updateQty(c.medicine_id, 1)}>+</button>
+                          </div>
+                        </td>
+                        <td className="num">MMK{c.selling_price.toFixed(2)}</td>
+                        <td className="num">MMK{(c.selling_price * c.quantity).toFixed(2)}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {/* Updated responsive button */}
+                          <button 
+                            type="button" 
+                            className="btn btn-sm btn-danger btn-responsive-remove" 
+                            onClick={() => removeFromCart(c.medicine_id)}
+                            title="Remove item"
+                          >
+                            <span className="remove-text-full">Remove</span>
+                            <span className="remove-text-short">&times;</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <div className="cart-total">Total: MMK{cartTotal.toFixed(2)}</div>
               <button
                 type="button"
