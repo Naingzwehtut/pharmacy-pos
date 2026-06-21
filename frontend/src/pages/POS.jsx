@@ -59,7 +59,7 @@ export default function POS() {
           const newQty = c.quantity + delta
           if (newQty <= 0) return null
           if (newQty > c.stock_quantity) {
-            setError(`Only MMK{c.stock_quantity} in stock`)
+            setError(`Only ${c.stock_quantity} in stock`)
             return c
           }
           return { ...c, quantity: newQty }
@@ -140,7 +140,7 @@ export default function POS() {
                       <td>{m.name}</td>
                       <td>{m.category}</td>
                       <td className="num">{m.stock_quantity}</td>
-                      <td className="num">${m.selling_price.toFixed(2)}</td>
+                      <td className="num">MMK{m.selling_price.toFixed(2)}</td>
                       <td>
                         {m.expiry_status === 'warning' && (
                           <span className="badge badge-warning">Expiring soon</span>
