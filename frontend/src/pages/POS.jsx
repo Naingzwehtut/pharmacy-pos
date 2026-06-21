@@ -237,11 +237,10 @@ export default function POS() {
                       </td>
 
                       <td className="num">
-                        MMK{c.selling_price.toFixed(2)}
+                        {c.selling_price.toFixed(2)}
                       </td>
 
                       <td className="num">
-                        MMK
                         {(c.selling_price * c.quantity).toFixed(2)}
                       </td>
 
