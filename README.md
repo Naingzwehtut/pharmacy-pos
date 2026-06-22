@@ -108,3 +108,6 @@ npm run dev                  # http://localhost:5173
 - **Frontend:** React 18, Vite, React Router, Recharts
 - **Backend:** Flask, Flask-JWT-Extended, SQLAlchemy
 - **Database:** PostgreSQL (Supabase)
+
+## 📜 License
+This project is licensed under the MIT License.
