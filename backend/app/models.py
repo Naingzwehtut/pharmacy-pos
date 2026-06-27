@@ -77,11 +77,36 @@ class Medicine(db.Model):
         }
 
 
+class AppSetting(db.Model):
+    __tablename__ = "app_settings"
+
+    key = db.Column(db.String(50), primary_key=True)
+    value = db.Column(db.String(255), nullable=False)
+
+    @staticmethod
+    def get(key, default=None):
+        row = AppSetting.query.get(key)
+        return row.value if row else default
+
+    @staticmethod
+    def set(key, value):
+        row = AppSetting.query.get(key)
+        if row:
+            row.value = str(value)
+        else:
+            row = AppSetting(key=key, value=str(value))
+            db.session.add(row)
+        db.session.commit()
+        return row
+
+
 class Sale(db.Model):
     __tablename__ = "sales"
 
     id = db.Column(db.Integer, primary_key=True)
     sale_number = db.Column(db.String(30), unique=True, nullable=False)
+    subtotal = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    delivery_fee = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
     total_cost = db.Column(db.Numeric(10, 2), nullable=False)
     total_profit = db.Column(db.Numeric(10, 2), nullable=False)
@@ -96,6 +121,8 @@ class Sale(db.Model):
         return {
             "id": self.id,
             "sale_number": self.sale_number,
+            "subtotal": float(self.subtotal),
+            "delivery_fee": float(self.delivery_fee),
             "total_amount": float(self.total_amount),
             "total_cost": float(self.total_cost),
             "total_profit": float(self.total_profit),
