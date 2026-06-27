@@ -41,8 +41,14 @@ export const api = {
     request(`/medicines/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteMedicine: (id) =>
     request(`/medicines/${id}`, { method: 'DELETE' }),
-  checkout: (items) =>
-    request('/sales/checkout', { method: 'POST', body: JSON.stringify({ items }) }),
+  checkout: (payload) =>
+    request('/sales/checkout', { method: 'POST', body: JSON.stringify(payload) }),
+  getDeliveryFee: () => request('/settings/delivery-fee'),
+  updateDeliveryFee: (delivery_fee) =>
+    request('/settings/delivery-fee', {
+      method: 'PUT',
+      body: JSON.stringify({ delivery_fee }),
+    }),
   getSales: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
     return request(`/sales${qs ? `?${qs}` : ''}`)
