@@ -9,13 +9,34 @@ export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [deliveryFee, setDeliveryFee] = useState('')
+  const [savingFee, setSavingFee] = useState(false)
+  const [feeMessage, setFeeMessage] = useState('')
 
   useEffect(() => {
-    api.getDashboard()
-      .then(setData)
+    Promise.all([api.getDashboard(), api.getDeliveryFee()])
+      .then(([dashboardData, feeData]) => {
+        setData(dashboardData)
+        setDeliveryFee(String(feeData.delivery_fee))
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const saveDeliveryFee = async (e) => {
+    e.preventDefault()
+    setSavingFee(true)
+    setFeeMessage('')
+    try {
+      const result = await api.updateDeliveryFee(parseFloat(deliveryFee))
+      setDeliveryFee(String(result.delivery_fee))
+      setFeeMessage('Default delivery fee saved.')
+    } catch (err) {
+      setFeeMessage(err.message)
+    } finally {
+      setSavingFee(false)
+    }
+  }
 
   if (loading) return <div className="loading">Loading dashboard...</div>
   if (error) return <div className="alert alert-error">{error}</div>
@@ -36,12 +57,40 @@ export default function Dashboard() {
         </div>
         <div className="summary-box">
           <div className="label">Total Revenue</div>
-          <div className="value">MMK{summary.total_revenue.toFixed(2)}</div>
+          <div className="value">${summary.total_revenue.toFixed(2)}</div>
         </div>
         <div className="summary-box">
           <div className="label">Total Profit</div>
-          <div className="value">MMK{summary.total_profit.toFixed(2)}</div>
+          <div className="value">${summary.total_profit.toFixed(2)}</div>
         </div>
+      </div>
+
+      <div className="card mb-16">
+        <div className="card-title">Default Delivery Fee</div>
+        <form onSubmit={saveDeliveryFee} className="filter-bar" style={{ marginBottom: 0 }}>
+          <div className="form-group">
+            <label>Amount ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={deliveryFee}
+              onChange={(e) => setDeliveryFee(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={savingFee}>
+            {savingFee ? 'Saving...' : 'Save'}
+          </button>
+        </form>
+        {feeMessage && (
+          <div className={`alert ${feeMessage.includes('saved') ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 12, marginBottom: 0 }}>
+            {feeMessage}
+          </div>
+        )}
+        <p className="text-muted mt-8" style={{ marginBottom: 0 }}>
+          Cashiers can apply this fee at checkout for delivery orders. They can adjust the amount per sale if needed.
+        </p>
       </div>
 
       <div className="grid-2">
