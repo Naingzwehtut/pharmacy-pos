@@ -98,6 +98,8 @@ export default function SalesHistory() {
                 <th>Date</th>
                 <th>Cashier</th>
                 <th className="num">Items</th>
+                <th className="num">Subtotal</th>
+                <th className="num">Delivery</th>
                 <th className="num">Total</th>
                 <th className="num">Cost</th>
                 <th className="num">Profit</th>
@@ -112,6 +114,10 @@ export default function SalesHistory() {
                     <td>{new Date(s.created_at).toLocaleString()}</td>
                     <td>{s.cashier_name}</td>
                     <td className="num">{s.items.length}</td>
+                    <td className="num">${(s.subtotal ?? s.total_amount).toFixed(2)}</td>
+                    <td className="num">
+                      {(s.delivery_fee ?? 0) > 0 ? `$${s.delivery_fee.toFixed(2)}` : '—'}
+                    </td>
                     <td className="num">${s.total_amount.toFixed(2)}</td>
                     <td className="num">${s.total_cost.toFixed(2)}</td>
                     <td className="num">${s.total_profit.toFixed(2)}</td>
@@ -131,7 +137,12 @@ export default function SalesHistory() {
                   </tr>
                   {expandedId === s.id && (
                     <tr>
-                      <td colSpan={8} style={{ background: '#fafafa' }}>
+                      <td colSpan={10} style={{ background: '#fafafa' }}>
+                        <div style={{ marginBottom: 8, fontSize: 13 }}>
+                          Subtotal: ${(s.subtotal ?? s.total_amount).toFixed(2)}
+                          {(s.delivery_fee ?? 0) > 0 && ` · Delivery: $${s.delivery_fee.toFixed(2)}`}
+                          {' · '}Total: ${s.total_amount.toFixed(2)}
+                        </div>
                         <table className="data-table">
                           <thead>
                             <tr>
