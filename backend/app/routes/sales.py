@@ -54,18 +54,28 @@ def checkout():
     items = data.get("items", [])
     cashier_id = int(get_jwt_identity())
 
+    try:
+        delivery_fee = float(data.get("delivery_fee", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "delivery_fee must be a number"}), 400
+
+    if delivery_fee < 0:
+        return jsonify({"error": "delivery_fee cannot be negative"}), 400
+
     if not items:
         return jsonify({"error": "Cart is empty"}), 400
 
     sale = Sale(
         sale_number=generate_sale_number(),
+        subtotal=0,
+        delivery_fee=delivery_fee,
         total_amount=0,
         total_cost=0,
         total_profit=0,
         cashier_id=cashier_id,
     )
 
-    total_amount = 0
+    subtotal = 0
     total_cost = 0
     total_profit = 0
     sale_items = []
@@ -97,13 +107,14 @@ def checkout():
             line_profit=line_profit,
         )
         sale_items.append((sale_item, medicine, quantity))
-        total_amount += line_total
+        subtotal += line_total
         total_cost += cost * quantity
         total_profit += line_profit
 
-    sale.total_amount = total_amount
+    sale.subtotal = subtotal
+    sale.total_amount = subtotal + delivery_fee
     sale.total_cost = total_cost
-    sale.total_profit = total_profit
+    sale.total_profit = total_profit + delivery_fee
     db.session.add(sale)
     db.session.flush()
 
