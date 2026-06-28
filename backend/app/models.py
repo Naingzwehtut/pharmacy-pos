@@ -107,6 +107,8 @@ class Sale(db.Model):
     sale_number = db.Column(db.String(30), unique=True, nullable=False)
     subtotal = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     delivery_fee = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    customer_name = db.Column(db.String(200), nullable=True)
+    customer_address = db.Column(db.Text, nullable=True)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
     total_cost = db.Column(db.Numeric(10, 2), nullable=False)
     total_profit = db.Column(db.Numeric(10, 2), nullable=False)
@@ -123,6 +125,8 @@ class Sale(db.Model):
             "sale_number": self.sale_number,
             "subtotal": float(self.subtotal),
             "delivery_fee": float(self.delivery_fee),
+            "customer_name": self.customer_name,
+            "customer_address": self.customer_address,
             "total_amount": float(self.total_amount),
             "total_cost": float(self.total_cost),
             "total_profit": float(self.total_profit),
