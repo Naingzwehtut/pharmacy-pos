@@ -12,12 +12,20 @@ export default function Dashboard() {
   const [deliveryFee, setDeliveryFee] = useState('')
   const [savingFee, setSavingFee] = useState(false)
   const [feeMessage, setFeeMessage] = useState('')
+  const [pharmacyForm, setPharmacyForm] = useState({
+    pharmacy_name: '',
+    pharmacy_address: '',
+    pharmacy_phone: '',
+  })
+  const [savingPharmacy, setSavingPharmacy] = useState(false)
+  const [pharmacyMessage, setPharmacyMessage] = useState('')
 
   useEffect(() => {
-    Promise.all([api.getDashboard(), api.getDeliveryFee()])
-      .then(([dashboardData, feeData]) => {
+    Promise.all([api.getDashboard(), api.getDeliveryFee(), api.getReceiptSettings()])
+      .then(([dashboardData, feeData, receiptData]) => {
         setData(dashboardData)
         setDeliveryFee(String(feeData.delivery_fee))
+        setPharmacyForm(receiptData)
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
@@ -35,6 +43,21 @@ export default function Dashboard() {
       setFeeMessage(err.message)
     } finally {
       setSavingFee(false)
+    }
+  }
+
+  const savePharmacySettings = async (e) => {
+    e.preventDefault()
+    setSavingPharmacy(true)
+    setPharmacyMessage('')
+    try {
+      const result = await api.updateReceiptSettings(pharmacyForm)
+      setPharmacyForm(result)
+      setPharmacyMessage('Receipt details saved.')
+    } catch (err) {
+      setPharmacyMessage(err.message)
+    } finally {
+      setSavingPharmacy(false)
     }
   }
 
@@ -63,6 +86,45 @@ export default function Dashboard() {
           <div className="label">Total Profit</div>
           <div className="value">${summary.total_profit.toFixed(2)}</div>
         </div>
+      </div>
+
+      <div className="card mb-16">
+        <div className="card-title">Receipt Details</div>
+        <form onSubmit={savePharmacySettings}>
+          <div className="form-group">
+            <label>Pharmacy name</label>
+            <input
+              value={pharmacyForm.pharmacy_name}
+              onChange={(e) => setPharmacyForm({ ...pharmacyForm, pharmacy_name: e.target.value })}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Address</label>
+            <textarea
+              rows={2}
+              value={pharmacyForm.pharmacy_address}
+              onChange={(e) => setPharmacyForm({ ...pharmacyForm, pharmacy_address: e.target.value })}
+              placeholder="Street, city"
+            />
+          </div>
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              value={pharmacyForm.pharmacy_phone}
+              onChange={(e) => setPharmacyForm({ ...pharmacyForm, pharmacy_phone: e.target.value })}
+              placeholder="+1 234 567 8900"
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={savingPharmacy}>
+            {savingPharmacy ? 'Saving...' : 'Save Receipt Details'}
+          </button>
+        </form>
+        {pharmacyMessage && (
+          <div className={`alert ${pharmacyMessage.includes('saved') ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 12, marginBottom: 0 }}>
+            {pharmacyMessage}
+          </div>
+        )}
       </div>
 
       <div className="card mb-16">
