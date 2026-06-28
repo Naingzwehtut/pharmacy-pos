@@ -62,6 +62,15 @@ def checkout():
     if delivery_fee < 0:
         return jsonify({"error": "delivery_fee cannot be negative"}), 400
 
+    customer_name = (data.get("customer_name") or "").strip()
+    customer_address = (data.get("customer_address") or "").strip()
+
+    if delivery_fee > 0:
+        if not customer_name:
+            return jsonify({"error": "Customer name is required for delivery orders"}), 400
+        if not customer_address:
+            return jsonify({"error": "Customer address is required for delivery orders"}), 400
+
     if not items:
         return jsonify({"error": "Cart is empty"}), 400
 
@@ -69,6 +78,8 @@ def checkout():
         sale_number=generate_sale_number(),
         subtotal=0,
         delivery_fee=delivery_fee,
+        customer_name=customer_name or None,
+        customer_address=customer_address or None,
         total_amount=0,
         total_cost=0,
         total_profit=0,
