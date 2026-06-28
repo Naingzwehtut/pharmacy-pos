@@ -49,6 +49,9 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ delivery_fee }),
     }),
+  getReceiptSettings: () => request('/settings/receipt'),
+  updateReceiptSettings: (data) =>
+    request('/settings/receipt', { method: 'PUT', body: JSON.stringify(data) }),
   getSales: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
     return request(`/sales${qs ? `?${qs}` : ''}`)
