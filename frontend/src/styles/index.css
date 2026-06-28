@@ -182,11 +182,23 @@ input, select, textarea {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: 7px 10px;
   border: 1px solid #ccc;
   border-radius: 2px;
+  resize: vertical;
+}
+
+.customer-fields {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.customer-fields textarea {
+  min-height: 56px;
 }
 
 .form-row {
@@ -417,18 +429,143 @@ table.data-table .num {
   height: 260px;
 }
 
-.receipt {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  max-width: 320px;
-  margin: 0 auto;
+.modal-receipt {
+  max-width: 420px;
 }
 
-.receipt-header {
+.receipt {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 13px;
+  max-width: 360px;
+  margin: 0 auto;
+  color: #111;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 20px 18px;
+}
+
+.receipt-brand {
   text-align: center;
-  border-bottom: 1px dashed #999;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #222;
+  margin-bottom: 14px;
+}
+
+.receipt-brand-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.receipt-brand-detail {
+  font-size: 12px;
+  color: #444;
+  line-height: 1.5;
+}
+
+.receipt-meta {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+.receipt-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.receipt-meta-row span:first-child {
+  color: #666;
+}
+
+.receipt-customer {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+}
+
+.receipt-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.receipt-customer-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.receipt-customer-address {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.receipt-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.receipt-items th,
+.receipt-items td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #e8e8e8;
+  text-align: left;
+}
+
+.receipt-items th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #555;
+  border-bottom: 1px solid #ccc;
+}
+
+.receipt-items .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt-summary {
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+}
+
+.receipt-summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.receipt-summary-total {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px solid #222;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.receipt-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed #bbb;
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.6;
 }
 
 .receipt-line {
@@ -437,21 +574,21 @@ table.data-table .num {
   margin-bottom: 4px;
 }
 
-.receipt-total {
-  border-top: 1px dashed #999;
-  padding-top: 8px;
-  margin-top: 8px;
-  font-weight: bold;
-}
-
 @media print {
   body * { visibility: hidden; }
+  .modal-overlay,
+  .modal-overlay * { visibility: hidden; }
   .receipt-print, .receipt-print * { visibility: visible; }
   .receipt-print {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+  }
+  .receipt {
+    border: none;
+    max-width: 80mm;
+    padding: 0;
   }
 }
 
@@ -471,55 +608,3 @@ table.data-table .num {
 .text-muted { color: #888; font-size: 12px; }
 .mt-8 { margin-top: 8px; }
 .mb-16 { margin-bottom: 16px; }
-
-
-/* ============================= */
-/* POS TABLE RESPONSIVE FIX     */
-/* ============================= */
-
-.pos-layout table.data-table {
-  table-layout: fixed;
-  width: 100%;
-}
-
-/* Last column (Remove button column) */
-.pos-layout table.data-table td:last-child,
-.pos-layout table.data-table th:last-child {
-  width: 60px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-/* Prevent button overflow inside table cell */
-.pos-layout table.data-table td:last-child {
-  padding: 6px 4px;
-}
-
-/* Make remove button always fit */
-.remove-btn {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border-radius: 4px;
-  border: none;
-  background: #c0392b;
-  color: #fff;
-  font-size: 16px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Hover effect */
-.remove-btn:hover {
-  background: #a93226;
-}
-
-/* Extra safety for small screens */
-@media (max-width: 900px) {
-  .pos-layout table.data-table td:last-child,
-  .pos-layout table.data-table th:last-child {
-    width: 50px;
-  }
-}
