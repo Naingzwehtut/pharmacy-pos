@@ -7,6 +7,38 @@ from app.utils import admin_required
 settings_bp = Blueprint("settings", __name__)
 
 DELIVERY_FEE_KEY = "default_delivery_fee"
+PHARMACY_NAME_KEY = "pharmacy_name"
+PHARMACY_ADDRESS_KEY = "pharmacy_address"
+PHARMACY_PHONE_KEY = "pharmacy_phone"
+
+
+def _receipt_settings():
+    return {
+        "pharmacy_name": AppSetting.get(PHARMACY_NAME_KEY, "Pharmacy POS"),
+        "pharmacy_address": AppSetting.get(PHARMACY_ADDRESS_KEY, ""),
+        "pharmacy_phone": AppSetting.get(PHARMACY_PHONE_KEY, ""),
+    }
+
+
+@settings_bp.route("/receipt", methods=["GET"])
+@jwt_required()
+def get_receipt_settings():
+    return jsonify(_receipt_settings())
+
+
+@settings_bp.route("/receipt", methods=["PUT"])
+@jwt_required()
+@admin_required()
+def update_receipt_settings():
+    data = request.get_json() or {}
+    name = (data.get("pharmacy_name") or "").strip()
+    if not name:
+        return jsonify({"error": "pharmacy_name is required"}), 400
+
+    AppSetting.set(PHARMACY_NAME_KEY, name)
+    AppSetting.set(PHARMACY_ADDRESS_KEY, (data.get("pharmacy_address") or "").strip())
+    AppSetting.set(PHARMACY_PHONE_KEY, (data.get("pharmacy_phone") or "").strip())
+    return jsonify(_receipt_settings())
 
 
 @settings_bp.route("/delivery-fee", methods=["GET"])
