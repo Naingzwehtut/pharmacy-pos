@@ -12,6 +12,8 @@ export default function POS() {
   const [completedSale, setCompletedSale] = useState(null)
   const [includeDelivery, setIncludeDelivery] = useState(false)
   const [deliveryFee, setDeliveryFee] = useState('0')
+  const [customerName, setCustomerName] = useState('')
+  const [customerAddress, setCustomerAddress] = useState('')
 
   useEffect(() => {
     api.getDeliveryFee()
@@ -86,15 +88,32 @@ export default function POS() {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return
+
+    const name = customerName.trim()
+    const address = customerAddress.trim()
+
+    if (includeDelivery && !name) {
+      setError('Customer name is required for delivery orders')
+      return
+    }
+    if (includeDelivery && !address) {
+      setError('Customer address is required for delivery orders')
+      return
+    }
+
     setCheckoutLoading(true)
     setError('')
     try {
       const sale = await api.checkout({
         items: cart.map((c) => ({ medicine_id: c.medicine_id, quantity: c.quantity })),
         delivery_fee: appliedDeliveryFee,
+        customer_name: name,
+        customer_address: address,
       })
       setCart([])
       setIncludeDelivery(false)
+      setCustomerName('')
+      setCustomerAddress('')
       setCompletedSale(sale)
       loadMedicines()
     } catch (err) {
@@ -207,6 +226,29 @@ export default function POS() {
                   ))}
                 </tbody>
               </table>
+              <div className="customer-fields">
+                <div className="form-group">
+                  <label>Customer name{includeDelivery ? '' : ' (optional)'}</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Customer name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>
+                    Customer address
+                    {includeDelivery ? '' : ' (optional)'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    placeholder={includeDelivery ? 'Required for delivery' : 'Delivery address'}
+                  />
+                </div>
+              </div>
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e0e0e0' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <input
