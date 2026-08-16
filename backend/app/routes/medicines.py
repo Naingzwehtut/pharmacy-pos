@@ -114,11 +114,31 @@ def update_medicine(medicine_id):
     return jsonify(medicine.to_dict(current_app.config["EXPIRY_WARNING_DAYS"]))
 
 
+
 @medicines_bp.route("/<int:medicine_id>", methods=["DELETE"])
 @jwt_required()
 @admin_required()
 def delete_medicine(medicine_id):
     medicine = Medicine.query.get_or_404(medicine_id)
+
+    existing_sale = SaleItem.query.filter_by(
+        medicine_id=medicine_id
+    ).first()
+
+    if existing_sale:
+        return jsonify({
+            "error": "Cannot delete this medicine because it has existing sales."
+        }), 409
+
     db.session.delete(medicine)
     db.session.commit()
+
     return jsonify({"message": "Medicine deleted"})
+# @medicines_bp.route("/<int:medicine_id>", methods=["DELETE"])
+# @jwt_required()
+# @admin_required()
+# def delete_medicine(medicine_id):
+#     medicine = Medicine.query.get_or_404(medicine_id)
+#     db.session.delete(medicine)
+#     db.session.commit()
+#     return jsonify({"message": "Medicine deleted"})
