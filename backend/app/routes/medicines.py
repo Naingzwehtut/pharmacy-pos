@@ -4,7 +4,8 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import or_
 
-from app.models import Medicine, db
+# from app.models import Medicine, db
+from app.models import Medicine, SaleItem, db
 from app.utils import admin_required
 
 medicines_bp = Blueprint("medicines", __name__)
