@@ -7,7 +7,7 @@ export default function Layout() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div className="sidebar-header">Pharmacy POS</div>
+        <div className="sidebar-header">ZWE POS</div>
         <nav className="sidebar-nav">
           <NavLink to="/pos" className={({ isActive }) => isActive ? 'active' : ''}>
             Point of Sale
