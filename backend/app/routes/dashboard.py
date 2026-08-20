@@ -25,6 +25,10 @@ def dashboard():
     total_profit = float(
         db.session.query(func.coalesce(func.sum(Sale.total_profit), 0)).scalar()
     )
+    total_expenses = float(
+        db.session.query(func.coalesce(func.sum(Sale.total_cost), 0)).scalar()
+    )
+    total_products = db.session.query(func.count(Medicine.id)).scalar() or 0
 
     best_selling = (
         db.session.query(
@@ -83,6 +87,8 @@ def dashboard():
                 "total_sales": total_sales,
                 "total_revenue": total_revenue,
                 "total_profit": total_profit,
+                "total_expenses": total_expenses,
+                "total_products": total_products,
             },
             "best_selling": [
                 {
