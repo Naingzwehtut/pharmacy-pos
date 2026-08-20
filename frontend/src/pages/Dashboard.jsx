@@ -80,16 +80,16 @@ export default function Dashboard() {
         </div>
         <div className="summary-box">
           <div className="label">Total Revenue</div>
-          <div className="value">${summary.total_revenue.toFixed(2)}</div>
+          <div className="value">{summary.total_revenue.toFixed(2)}</div>
         </div>
         <div className="summary-box">
           <div className="label">Total Profit</div>
-          <div className="value">${summary.total_profit.toFixed(2)}</div>
+          <div className="value">{summary.total_profit.toFixed(2)}</div>
         </div>
         
          <div className="summary-box">
     <div className="label">Total Expenses</div>
-    <div className="value">${summary.total_expenses.toFixed(2)}</div>
+    <div className="value">{summary.total_expenses.toFixed(2)}</div>
   </div>
   <div className="summary-box">
     <div className="label">Total Products</div>
