@@ -26,7 +26,9 @@ def dashboard():
         db.session.query(func.coalesce(func.sum(Sale.total_profit), 0)).scalar()
     )
     total_expenses = float(
-        db.session.query(func.coalesce(func.sum(Sale.total_cost), 0)).scalar()
+        db.session.query(
+            func.coalesce(func.sum(Medicine.cost_price * Medicine.stock_quantity), 0)
+        ).scalar()
     )
     total_products = db.session.query(func.count(Medicine.id)).scalar() or 0
 
