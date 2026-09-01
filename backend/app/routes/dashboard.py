@@ -150,7 +150,7 @@ def dashboard_calendar():
     items_rows = (
         db.session.query(
             func.date(Sale.created_at).label("day"),
-            func.coalesce(func.sum(SaleItem.quantity), 0).label("items_sold"),
+            func.count(SaleItem.id).label("items_sold"),
         )
         .join(SaleItem, SaleItem.sale_id == Sale.id)
         .filter(
