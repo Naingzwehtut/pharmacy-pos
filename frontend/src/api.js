@@ -58,4 +58,6 @@ export const api = {
   },
   getSale: (id) => request(`/sales/${id}`),
   getDashboard: () => request('/dashboard'),
+  getCalendarStats: (year, month) =>
+    request(`/dashboard/calendar?year=${year}&month=${month}`),
 }
