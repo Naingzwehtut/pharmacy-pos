@@ -131,10 +131,9 @@ def dashboard_calendar():
     start_date = date(year, month, 1)
     end_date = date(year, month, monthrange(year, month)[1])
 
-    rows = (
+    revenue_rows = (
         db.session.query(
             func.date(Sale.created_at).label("day"),
-            func.count(Sale.id).label("count"),
             func.sum(Sale.total_amount).label("revenue"),
             func.sum(Sale.total_profit).label("profit"),
         )
@@ -146,13 +145,30 @@ def dashboard_calendar():
         .all()
     )
 
+    # Summed separately (joined to sale_items) so sales with multiple line
+    # items don't get their revenue/profit multiplied in the query above.
+    items_rows = (
+        db.session.query(
+            func.date(Sale.created_at).label("day"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("items_sold"),
+        )
+        .join(SaleItem, SaleItem.sale_id == Sale.id)
+        .filter(
+            func.date(Sale.created_at) >= start_date,
+            func.date(Sale.created_at) <= end_date,
+        )
+        .group_by(func.date(Sale.created_at))
+        .all()
+    )
+    items_by_day = {str(row.day): int(row.items_sold or 0) for row in items_rows}
+
     return jsonify(
         {
             str(row.day): {
-                "total_sales": row.count,
+                "total_items_sold": items_by_day.get(str(row.day), 0),
                 "total_revenue": float(row.revenue or 0),
                 "total_profit": float(row.profit or 0),
             }
-            for row in rows
+            for row in revenue_rows
         }
     )
