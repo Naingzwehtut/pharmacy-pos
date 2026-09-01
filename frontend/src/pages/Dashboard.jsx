@@ -4,6 +4,7 @@ import {
   LineChart, Line, Legend,
 } from 'recharts'
 import { api } from '../api'
+import Calendar from './Calendar'
 
 export default function Dashboard() {
   const [data, setData] = useState(null)
@@ -163,6 +164,10 @@ export default function Dashboard() {
         <p className="text-muted mt-8" style={{ marginBottom: 0 }}>
           Cashiers can apply this fee at checkout for delivery orders. They can adjust the amount per sale if needed.
         </p>
+      </div>
+
+      <div className="mb-16">
+        <Calendar />
       </div>
 
       <div className="grid-2">
