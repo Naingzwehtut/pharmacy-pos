@@ -164,8 +164,8 @@ export default function Calendar() {
             {MONTH_NAMES[cursor.month]} {hovered.dayNum}, {cursor.year}
           </div>
           <div className="cal-tooltip-row">
-            <span>Total Sales</span>
-            <strong>{hovered.stats.total_sales}</strong>
+            <span>Total Items Sold</span>
+            <strong>{hovered.stats.total_items_sold}</strong>
           </div>
           <div className="cal-tooltip-row">
             <span>Total Revenue</span>
