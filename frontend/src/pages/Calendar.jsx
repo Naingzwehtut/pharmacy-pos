@@ -16,7 +16,7 @@ function toKey(year, month, day) {
 }
 
 function currencyFmt(v) {
-  return `$${Number(v || 0).toFixed(2)}`
+  return `${Number(v || 0).toFixed(2)}`
 }
 
 export default function Calendar() {
