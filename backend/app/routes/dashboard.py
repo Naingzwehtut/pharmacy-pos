@@ -1,6 +1,7 @@
+from calendar import monthrange
 from datetime import date, timedelta
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 
@@ -113,5 +114,45 @@ def dashboard():
                 }
                 for row in reversed(sales_by_day)
             ],
+        }
+    )
+
+
+@dashboard_bp.route("/calendar", methods=["GET"])
+@jwt_required()
+@admin_required()
+def dashboard_calendar():
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+
+    if not year or not month or month < 1 or month > 12:
+        return jsonify({"error": "year and month query params are required"}), 400
+
+    start_date = date(year, month, 1)
+    end_date = date(year, month, monthrange(year, month)[1])
+
+    rows = (
+        db.session.query(
+            func.date(Sale.created_at).label("day"),
+            func.count(Sale.id).label("count"),
+            func.sum(Sale.total_amount).label("revenue"),
+            func.sum(Sale.total_profit).label("profit"),
+        )
+        .filter(
+            func.date(Sale.created_at) >= start_date,
+            func.date(Sale.created_at) <= end_date,
+        )
+        .group_by(func.date(Sale.created_at))
+        .all()
+    )
+
+    return jsonify(
+        {
+            str(row.day): {
+                "total_sales": row.count,
+                "total_revenue": float(row.revenue or 0),
+                "total_profit": float(row.profit or 0),
+            }
+            for row in rows
         }
     )
