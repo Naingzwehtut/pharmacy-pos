@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 # from app.models import Medicine, db
 from app.models import Medicine, SaleItem, db
@@ -18,6 +18,7 @@ def list_medicines():
     category = request.args.get("category", "").strip()
     include_expired = request.args.get("include_expired", "false").lower() == "true"
     pos_only = request.args.get("pos", "false").lower() == "true"
+    added_date = request.args.get("added_date", "").strip()
 
     query = Medicine.query
 
@@ -33,10 +34,23 @@ def list_medicines():
     if pos_only and not include_expired:
         query = query.filter(Medicine.expiry_date >= date.today())
         query = query.filter(Medicine.stock_quantity > 0)
+    if added_date:
+        try:
+            target_date = date.fromisoformat(added_date)
+        except ValueError:
+            return jsonify({"error": "Invalid added_date format (YYYY-MM-DD)"}), 400
+        query = query.filter(func.date(Medicine.created_at) == target_date)
 
     medicines = query.order_by(Medicine.name).all()
     warning_days = current_app.config["EXPIRY_WARNING_DAYS"]
-    return jsonify([m.to_dict(warning_days) for m in medicines])
+
+    result = []
+    for m in medicines:
+        item = m.to_dict(warning_days)
+        item["created_at"] = m.created_at.isoformat() if m.created_at else None
+        result.append(item)
+
+    return jsonify(result)
 
 
 @medicines_bp.route("/categories", methods=["GET"])
