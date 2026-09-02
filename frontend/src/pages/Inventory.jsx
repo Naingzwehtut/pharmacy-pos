@@ -10,6 +10,13 @@ const EMPTY_FORM = {
   expiry_date: '',
 }
 
+function formatAddedDate(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 function ExpiryBadge({ status }) {
   if (status === 'expired') return <span className="badge badge-expired">Expired</span>
   if (status === 'warning') return <span className="badge badge-warning">Expiring soon</span>
@@ -19,6 +26,7 @@ function ExpiryBadge({ status }) {
 export default function Inventory() {
   const [medicines, setMedicines] = useState([])
   const [search, setSearch] = useState('')
+  const [addedDate, setAddedDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -28,7 +36,9 @@ export default function Inventory() {
   const load = async () => {
     setLoading(true)
     try {
-      const data = await api.getMedicines({ search, include_expired: 'true' })
+      const params = { search, include_expired: 'true' }
+      if (addedDate) params.added_date = addedDate
+      const data = await api.getMedicines(params)
       setMedicines(data)
     } catch (err) {
       setError(err.message)
@@ -40,7 +50,7 @@ export default function Inventory() {
   useEffect(() => {
     const timer = setTimeout(load, 300)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [search, addedDate])
 
   const openAdd = () => {
     setEditId(null)
@@ -102,18 +112,52 @@ export default function Inventory() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search medicines..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="filter-bar">
+        <div className="form-group" style={{ flex: 1, minWidth: 220 }}>
+          <label>Search</label>
+          <input
+            type="text"
+            placeholder="Search medicines..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label>Added on</label>
+          <input
+            type="date"
+            value={addedDate}
+            onChange={(e) => setAddedDate(e.target.value)}
+          />
+        </div>
+        {addedDate && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setAddedDate('')}
+            style={{ alignSelf: 'flex-end', marginBottom: 2 }}
+          >
+            Clear date
+          </button>
+        )}
       </div>
+
+      {addedDate && (
+        <p className="text-muted" style={{ marginTop: -8, marginBottom: 12 }}>
+          Showing medicines added on {formatAddedDate(addedDate)}
+          {medicines.length > 0 ? ` — ${medicines.length} found` : ''}
+        </p>
+      )}
 
       <div className="card">
         {loading ? (
           <div className="loading">Loading inventory...</div>
+        ) : medicines.length === 0 ? (
+          <div className="empty-state">
+            {addedDate
+              ? `No medicines were added on ${formatAddedDate(addedDate)}.`
+              : 'No medicines found.'}
+          </div>
         ) : (
           <table className="data-table">
             <thead>
@@ -132,7 +176,14 @@ export default function Inventory() {
             <tbody>
               {medicines.map((m) => (
                 <tr key={m.id} style={m.is_expired ? { background: '#fdf2f2' } : undefined}>
-                  <td>{m.name}</td>
+                  <td>
+                    <div>{m.name}</div>
+                    {m.created_at && (
+                      <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                        Added {formatAddedDate(m.created_at)}
+                      </div>
+                    )}
+                  </td>
                   <td>{m.category}</td>
                   <td className="num">
                     {m.stock_quantity}
