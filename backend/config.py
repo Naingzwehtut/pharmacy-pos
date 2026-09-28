@@ -11,11 +11,20 @@ class Config:
     if not SQLALCHEMY_DATABASE_URI:
         # Local dev fallback when Supabase/PostgreSQL is not configured
         SQLALCHEMY_DATABASE_URI = "sqlite:///pharmacy_pos.db"
-    # Render/Heroku use postgres:// — SQLAlchemy needs postgresql://
-    if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
-        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(
-            "postgres://", "postgresql://", 1
-        )
+    # # Render/Heroku use postgres:// — SQLAlchemy needs postgresql://
+    # if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
+    #     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(
+    #         "postgres://", "postgresql://", 1
+    #     )
+    
+    # Render/Heroku/Supabase give postgres:// or postgresql://. Always use the
+    # psycopg2 driver we install (SQLAlchemy 2.1 changed the default to psycopg v3).
+    for _prefix in ("postgres://", "postgresql://"):
+        if SQLALCHEMY_DATABASE_URI.startswith(_prefix):
+            SQLALCHEMY_DATABASE_URI = (
+                "postgresql+psycopg2://" + SQLALCHEMY_DATABASE_URI[len(_prefix):]
+            )
+            break
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     EXPIRY_WARNING_DAYS = int(os.environ.get("EXPIRY_WARNING_DAYS", "30"))
