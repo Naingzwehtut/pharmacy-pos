@@ -40,55 +40,6 @@ It was built as a practical full-stack application with a focus on:
 * 🏥 Consultation-only visits (doctor fee, no medicines) are supported
 * Plain pharmacy walk-in sales still work: just don't select a patient
 
-## Screenshots
-
-*Add screenshots of the application here.*
-
-## Tech Stack
-
-* React
-* JavaScript
-* Python
-* Flask
-* SQL
-* REST API
-
-## Project Structure
-
-The application is organized into separate frontend, backend, and database components.
-
-## Setup
-
-```bash
-# backend
-cd backend
-pip install -r requirements.txt
-python seed.py          # new database: creates tables, users and sample data
-python run.py
-
-# frontend
-cd frontend
-npm install
-npm run dev
-```
-
-Default logins: `admin / admin123`, `cashier / cashier123` (change these before real use).
-
-### Upgrading an existing database to the clinic version
-
-If you already have data from the pharmacy-only version, run this once. It adds the
-new patient table and columns and keeps all existing medicines, sales and users.
-It is safe to run more than once, and works for SQLite and PostgreSQL.
-
-```bash
-cd backend
-python upgrade_db.py
-```
-
-## Purpose
-
-This project was created as a practical full-stack application to explore real-world business workflows, authentication, database management, API development, and frontend integration.
-
 ## License
 
 This project is licensed under the MIT License.
