@@ -6,7 +6,7 @@ from datetime import date, timedelta
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
-from app.models import Medicine, User, db
+from app.models import Medicine, Patient, User, db
 
 app = create_app()
 
@@ -51,6 +51,17 @@ def seed():
                     expiry_date=date.today() + timedelta(days=days_offset),
                 )
                 db.session.add(med)
+
+        if Patient.query.count() == 0:
+            sample = Patient(
+                name="Sample Patient",
+                gender="Female",
+                phone="0900000000",
+                allergies="Penicillin",
+            )
+            db.session.add(sample)
+            db.session.flush()
+            sample.patient_number = f"P{sample.id:05d}"
 
         db.session.commit()
         print("Database seeded successfully.")

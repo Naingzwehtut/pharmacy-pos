@@ -7,6 +7,7 @@ from app.utils import admin_required
 settings_bp = Blueprint("settings", __name__)
 
 DELIVERY_FEE_KEY = "default_delivery_fee"
+DOCTOR_FEE_KEY = "default_doctor_fee"
 PHARMACY_NAME_KEY = "pharmacy_name"
 PHARMACY_ADDRESS_KEY = "pharmacy_address"
 PHARMACY_PHONE_KEY = "pharmacy_phone"
@@ -66,3 +67,30 @@ def update_delivery_fee():
 
     AppSetting.set(DELIVERY_FEE_KEY, fee)
     return jsonify({"delivery_fee": fee})
+
+
+@settings_bp.route("/doctor-fee", methods=["GET"])
+@jwt_required()
+def get_doctor_fee():
+    value = AppSetting.get(DOCTOR_FEE_KEY, "0")
+    return jsonify({"doctor_fee": float(value)})
+
+
+@settings_bp.route("/doctor-fee", methods=["PUT"])
+@jwt_required()
+@admin_required()
+def update_doctor_fee():
+    data = request.get_json() or {}
+    if "doctor_fee" not in data:
+        return jsonify({"error": "doctor_fee is required"}), 400
+
+    try:
+        fee = float(data["doctor_fee"])
+    except (TypeError, ValueError):
+        return jsonify({"error": "doctor_fee must be a number"}), 400
+
+    if fee < 0:
+        return jsonify({"error": "doctor_fee cannot be negative"}), 400
+
+    AppSetting.set(DOCTOR_FEE_KEY, fee)
+    return jsonify({"doctor_fee": fee})

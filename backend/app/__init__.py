@@ -24,12 +24,14 @@ def create_app(config_class=Config):
     from app.routes.sales import sales_bp
     from app.routes.dashboard import dashboard_bp
     from app.routes.settings import settings_bp
+    from app.routes.patients import patients_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(medicines_bp, url_prefix="/api/medicines")
     app.register_blueprint(sales_bp, url_prefix="/api/sales")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     app.register_blueprint(settings_bp, url_prefix="/api/settings")
+    app.register_blueprint(patients_bp, url_prefix="/api/patients")
 
     @app.route("/api/health")
     def health():

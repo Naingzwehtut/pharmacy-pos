@@ -11,10 +11,11 @@ function formatReceiptDate(isoDate) {
 export default function Receipt({ sale, pharmacy }) {
   const subtotal = sale.subtotal ?? sale.total_amount
   const deliveryFee = sale.delivery_fee ?? 0
+  const doctorFee = sale.doctor_fee ?? 0
   const pharmacyName = pharmacy?.pharmacy_name || 'Pharmacy POS'
   const pharmacyAddress = pharmacy?.pharmacy_address || ''
   const pharmacyPhone = pharmacy?.pharmacy_phone || ''
-  const customerName = sale.customer_name?.trim()
+  const customerName = (sale.patient_name || sale.customer_name || '').trim()
   const customerAddress = sale.customer_address?.trim()
 
   return (
@@ -38,12 +39,23 @@ export default function Receipt({ sale, pharmacy }) {
           <span>Cashier</span>
           <span>{sale.cashier_name}</span>
         </div>
+        {sale.doctor_name && (
+          <div className="receipt-meta-row">
+            <span>Doctor</span>
+            <span>{sale.doctor_name}</span>
+          </div>
+        )}
       </div>
 
       {(customerName || customerAddress) && (
         <div className="receipt-customer">
-          <div className="receipt-section-label">Customer</div>
-          {customerName && <div className="receipt-customer-name">{customerName}</div>}
+          <div className="receipt-section-label">{sale.patient_id ? 'Patient' : 'Customer'}</div>
+          {customerName && (
+            <div className="receipt-customer-name">
+              {customerName}
+              {sale.patient_number && <span className="receipt-patient-id"> · {sale.patient_number}</span>}
+            </div>
+          )}
           {customerAddress && (
             <div className="receipt-customer-address">{customerAddress}</div>
           )}
@@ -62,7 +74,10 @@ export default function Receipt({ sale, pharmacy }) {
         <tbody>
           {sale.items.map((item) => (
             <tr key={item.id}>
-              <td>{item.medicine_name}</td>
+              <td>
+                {item.medicine_name}
+                {item.dosage && <div className="receipt-dosage">{item.dosage}</div>}
+              </td>
               <td className="num">{item.quantity}</td>
               <td className="num">${item.selling_price.toFixed(2)}</td>
               <td className="num">${item.line_total.toFixed(2)}</td>
@@ -76,6 +91,12 @@ export default function Receipt({ sale, pharmacy }) {
           <span>Subtotal</span>
           <span>${subtotal.toFixed(2)}</span>
         </div>
+        {doctorFee > 0 && (
+          <div className="receipt-summary-row">
+            <span>Doctor fee</span>
+            <span>${doctorFee.toFixed(2)}</span>
+          </div>
+        )}
         {deliveryFee > 0 && (
           <div className="receipt-summary-row">
             <span>Delivery fee</span>

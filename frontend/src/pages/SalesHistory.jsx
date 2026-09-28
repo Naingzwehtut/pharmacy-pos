@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import ReceiptModal from '../components/ReceiptModal'
 
@@ -96,10 +97,11 @@ export default function SalesHistory() {
               <tr>
                 <th>Sale #</th>
                 <th>Date</th>
-                <th>Customer</th>
+                <th>Customer / Patient</th>
                 <th>Cashier</th>
                 <th className="num">Items</th>
                 <th className="num">Subtotal</th>
+                <th className="num">Doctor fee</th>
                 <th className="num">Delivery</th>
                 <th className="num">Total</th>
                 <th className="num">Cost</th>
@@ -113,10 +115,19 @@ export default function SalesHistory() {
                   <tr>
                     <td>{s.sale_number}</td>
                     <td>{new Date(s.created_at).toLocaleString()}</td>
-                    <td>{s.customer_name || 'Walk-in'}</td>
+                    <td>
+                      {s.patient_id ? (
+                        <Link to={`/patients/${s.patient_id}`}>{s.patient_name}</Link>
+                      ) : (
+                        s.customer_name || 'Walk-in'
+                      )}
+                    </td>
                     <td>{s.cashier_name}</td>
                     <td className="num">{s.items.length}</td>
                     <td className="num">${(s.subtotal ?? s.total_amount).toFixed(2)}</td>
+                    <td className="num">
+                      {(s.doctor_fee ?? 0) > 0 ? `$${s.doctor_fee.toFixed(2)}` : '—'}
+                    </td>
                     <td className="num">
                       {(s.delivery_fee ?? 0) > 0 ? `$${s.delivery_fee.toFixed(2)}` : '—'}
                     </td>
@@ -139,10 +150,13 @@ export default function SalesHistory() {
                   </tr>
                   {expandedId === s.id && (
                     <tr>
-                      <td colSpan={11} style={{ background: '#fafafa' }}>
+                      <td colSpan={12} style={{ background: '#fafafa' }}>
                         <div style={{ marginBottom: 8, fontSize: 13 }}>
                           {s.customer_name && <>Customer: {s.customer_name} · </>}
                           {s.customer_address && <>Address: {s.customer_address} · </>}
+                          {s.doctor_name && <>Doctor: {s.doctor_name} · </>}
+                          {s.diagnosis && <>Diagnosis: {s.diagnosis} · </>}
+                          {(s.doctor_fee ?? 0) > 0 && <>Doctor fee: ${s.doctor_fee.toFixed(2)} · </>}
                           Subtotal: ${(s.subtotal ?? s.total_amount).toFixed(2)}
                           {(s.delivery_fee ?? 0) > 0 && ` · Delivery: $${s.delivery_fee.toFixed(2)}`}
                           {' · '}Total: ${s.total_amount.toFixed(2)}
@@ -151,6 +165,7 @@ export default function SalesHistory() {
                           <thead>
                             <tr>
                               <th>Medicine</th>
+                              <th>Dosage</th>
                               <th className="num">Qty</th>
                               <th className="num">Cost (at sale)</th>
                               <th className="num">Price (at sale)</th>
@@ -162,6 +177,7 @@ export default function SalesHistory() {
                             {s.items.map((item) => (
                               <tr key={item.id}>
                                 <td>{item.medicine_name}</td>
+                                <td>{item.dosage || '—'}</td>
                                 <td className="num">{item.quantity}</td>
                                 <td className="num">${item.cost_price.toFixed(2)}</td>
                                 <td className="num">${item.selling_price.toFixed(2)}</td>

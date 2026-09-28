@@ -6,6 +6,8 @@ import POS from './pages/POS'
 import Inventory from './pages/Inventory'
 import Dashboard from './pages/Dashboard'
 import SalesHistory from './pages/SalesHistory'
+import Patients from './pages/Patients'
+import PatientDetail from './pages/PatientDetail'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -38,6 +40,8 @@ export default function App() {
         <Route path="pos" element={<POS />} />
         <Route path="inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
         <Route path="dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
+        <Route path="patients" element={<Patients />} />
+        <Route path="patients/:id" element={<PatientDetail />} />
         <Route path="sales" element={<SalesHistory />} />
       </Route>
     </Routes>

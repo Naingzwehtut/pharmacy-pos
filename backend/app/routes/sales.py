@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 
-from app.models import Medicine, Sale, SaleItem, db
+from app.models import Medicine, Patient, Sale, SaleItem, db
 from app.utils import generate_sale_number, validate_medicine_for_sale
 
 sales_bp = Blueprint("sales", __name__)
@@ -16,8 +16,12 @@ def list_sales():
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
     sale_number = request.args.get("sale_number", "").strip()
+    patient_id = request.args.get("patient_id", type=int)
 
     query = Sale.query
+
+    if patient_id:
+        query = query.filter(Sale.patient_id == patient_id)
 
     if start_date:
         try:
@@ -47,6 +51,21 @@ def get_sale(sale_id):
     return jsonify(sale.to_dict())
 
 
+def _parse_fee(data, key):
+    """Returns (value, error_response)."""
+    try:
+        value = float(data.get(key, 0) or 0)
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": f"{key} must be a number"}), 400)
+    if value < 0:
+        return None, (jsonify({"error": f"{key} cannot be negative"}), 400)
+    return value, None
+
+
+def _text(data, key):
+    return (data.get(key) or "").strip() or None
+
+
 @sales_bp.route("/checkout", methods=["POST"])
 @jwt_required()
 def checkout():
@@ -54,16 +73,25 @@ def checkout():
     items = data.get("items", [])
     cashier_id = int(get_jwt_identity())
 
-    try:
-        delivery_fee = float(data.get("delivery_fee", 0))
-    except (TypeError, ValueError):
-        return jsonify({"error": "delivery_fee must be a number"}), 400
+    delivery_fee, err = _parse_fee(data, "delivery_fee")
+    if err:
+        return err
+    doctor_fee, err = _parse_fee(data, "doctor_fee")
+    if err:
+        return err
 
-    if delivery_fee < 0:
-        return jsonify({"error": "delivery_fee cannot be negative"}), 400
+    # Patient (optional). If chosen, the visit is saved in their history.
+    patient = None
+    patient_id = data.get("patient_id")
+    if patient_id:
+        patient = Patient.query.get(patient_id)
+        if not patient:
+            return jsonify({"error": "Patient not found"}), 404
 
-    customer_name = (data.get("customer_name") or "").strip()
-    customer_address = (data.get("customer_address") or "").strip()
+    customer_name = _text(data, "customer_name") or (patient.name if patient else None)
+    customer_address = _text(data, "customer_address") or (
+        patient.address if patient else None
+    )
 
     if delivery_fee > 0:
         if not customer_name:
@@ -71,15 +99,38 @@ def checkout():
         if not customer_address:
             return jsonify({"error": "Customer address is required for delivery orders"}), 400
 
-    if not items:
-        return jsonify({"error": "Cart is empty"}), 400
+    # A consultation with no medicines is allowed, as long as there is a doctor fee.
+    if not items and doctor_fee <= 0:
+        return jsonify({"error": "Add a medicine or a doctor fee"}), 400
+
+    # Merge duplicate lines so the stock check covers the total requested.
+    merged = {}
+    for item in items:
+        try:
+            medicine_id = int(item.get("medicine_id"))
+            quantity = int(item.get("quantity", 0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "Invalid item in cart"}), 400
+        line = merged.setdefault(
+            medicine_id, {"quantity": 0, "dosage": None}
+        )
+        line["quantity"] += quantity
+        dosage = (item.get("dosage") or "").strip()
+        if dosage:
+            line["dosage"] = dosage[:300]
 
     sale = Sale(
         sale_number=generate_sale_number(),
         subtotal=0,
         delivery_fee=delivery_fee,
-        customer_name=customer_name or None,
-        customer_address=customer_address or None,
+        doctor_fee=doctor_fee,
+        doctor_name=_text(data, "doctor_name"),
+        symptoms=_text(data, "symptoms"),
+        diagnosis=_text(data, "diagnosis"),
+        visit_notes=_text(data, "visit_notes"),
+        patient_id=patient.id if patient else None,
+        customer_name=customer_name,
+        customer_address=customer_address,
         total_amount=0,
         total_cost=0,
         total_profit=0,
@@ -91,9 +142,8 @@ def checkout():
     total_profit = 0
     sale_items = []
 
-    for item in items:
-        medicine_id = item.get("medicine_id")
-        quantity = int(item.get("quantity", 0))
+    for medicine_id, line in merged.items():
+        quantity = line["quantity"]
 
         medicine = Medicine.query.get(medicine_id)
         if not medicine:
@@ -116,6 +166,7 @@ def checkout():
             selling_price=selling,
             line_total=line_total,
             line_profit=line_profit,
+            dosage=line["dosage"],
         )
         sale_items.append((sale_item, medicine, quantity))
         subtotal += line_total
@@ -123,12 +174,14 @@ def checkout():
         total_profit += line_profit
 
     sale.subtotal = subtotal
-    sale.total_amount = subtotal + delivery_fee
+    sale.total_amount = subtotal + delivery_fee + doctor_fee
     sale.total_cost = total_cost
-    sale.total_profit = total_profit + delivery_fee
+    # Delivery and doctor fees carry no product cost, so they count as profit.
+    sale.total_profit = total_profit + delivery_fee + doctor_fee
     db.session.add(sale)
     db.session.flush()
 
+    # Stock leaves the pharmacy here, in the same transaction as the sale.
     for sale_item, medicine, quantity in sale_items:
         sale_item.sale_id = sale.id
         medicine.stock_quantity -= quantity

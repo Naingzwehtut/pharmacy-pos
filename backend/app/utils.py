@@ -21,9 +21,11 @@ def admin_required():
 
 
 def generate_sale_number():
+    import secrets
     from datetime import datetime
 
-    return f"S{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    # Random suffix prevents a clash when two sales happen in the same second.
+    return f"S{datetime.now().strftime('%Y%m%d%H%M%S')}{secrets.token_hex(2).upper()}"
 
 
 def validate_medicine_for_sale(medicine, quantity, warning_days=30):

@@ -57,6 +57,22 @@ export const api = {
     return request(`/sales${qs ? `?${qs}` : ''}`)
   },
   getSale: (id) => request(`/sales/${id}`),
+  getDoctorFee: () => request('/settings/doctor-fee'),
+  updateDoctorFee: (doctor_fee) =>
+    request('/settings/doctor-fee', {
+      method: 'PUT',
+      body: JSON.stringify({ doctor_fee }),
+    }),
+  getPatients: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/patients${qs ? `?${qs}` : ''}`)
+  },
+  getPatient: (id) => request(`/patients/${id}`),
+  createPatient: (data) =>
+    request('/patients', { method: 'POST', body: JSON.stringify(data) }),
+  updatePatient: (id, data) =>
+    request(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePatient: (id) => request(`/patients/${id}`, { method: 'DELETE' }),
   getDashboard: () => request('/dashboard'),
   getCalendarStats: (year, month) =>
     request(`/dashboard/calendar?year=${year}&month=${month}`),

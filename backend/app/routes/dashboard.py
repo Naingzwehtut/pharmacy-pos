@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 
-from app.models import Medicine, Sale, SaleItem, db
+from app.models import Medicine, Patient, Sale, SaleItem, db
 from app.utils import admin_required
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -32,6 +32,10 @@ def dashboard():
         ).scalar()
     )
     total_products = db.session.query(func.count(Medicine.id)).scalar() or 0
+    total_patients = db.session.query(func.count(Patient.id)).scalar() or 0
+    total_doctor_fees = float(
+        db.session.query(func.coalesce(func.sum(Sale.doctor_fee), 0)).scalar()
+    )
 
     best_selling = (
         db.session.query(
@@ -92,6 +96,8 @@ def dashboard():
                 "total_profit": total_profit,
                 "total_expenses": total_expenses,
                 "total_products": total_products,
+                "total_patients": total_patients,
+                "total_doctor_fees": total_doctor_fees,
             },
             "best_selling": [
                 {

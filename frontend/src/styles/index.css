@@ -608,3 +608,108 @@ table.data-table .num {
 .text-muted { color: #888; font-size: 12px; }
 .mt-8 { margin-top: 8px; }
 .mb-16 { margin-bottom: 16px; }
+
+/* ---------- Clinic: patients, visits ---------- */
+.patient-picker {
+  position: relative;
+}
+
+.patient-picker > input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+}
+
+.patient-results {
+  margin-top: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.patient-result {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  text-align: left;
+}
+
+.patient-result:hover {
+  background: #f0f6fb;
+}
+
+.patient-result-new {
+  color: #1a5276;
+  font-weight: 600;
+}
+
+.patient-chip {
+  padding: 10px 12px;
+  border: 1px solid #a9cce3;
+  background: #eaf2f8;
+  border-radius: 2px;
+}
+
+.patient-chip-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.allergy-alert {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: #fadbd8;
+  border: 1px solid #e6b0aa;
+  color: #922b21;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 2px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 20px;
+}
+
+.detail-field {
+  white-space: pre-line;
+}
+
+.dosage-cell {
+  padding-top: 0 !important;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dosage-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.cart-row td {
+  border-bottom: none !important;
+}
+
+.receipt-dosage {
+  font-size: 11px;
+  color: #555;
+  font-style: italic;
+}
+
+.receipt-patient-id {
+  font-weight: 400;
+  color: #666;
+  font-size: 12px;
+}

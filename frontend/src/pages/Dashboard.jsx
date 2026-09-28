@@ -13,6 +13,9 @@ export default function Dashboard() {
   const [deliveryFee, setDeliveryFee] = useState('')
   const [savingFee, setSavingFee] = useState(false)
   const [feeMessage, setFeeMessage] = useState('')
+  const [doctorFee, setDoctorFee] = useState('')
+  const [savingDoctorFee, setSavingDoctorFee] = useState(false)
+  const [doctorFeeMessage, setDoctorFeeMessage] = useState('')
   const [pharmacyForm, setPharmacyForm] = useState({
     pharmacy_name: '',
     pharmacy_address: '',
@@ -22,10 +25,11 @@ export default function Dashboard() {
   const [pharmacyMessage, setPharmacyMessage] = useState('')
 
   useEffect(() => {
-    Promise.all([api.getDashboard(), api.getDeliveryFee(), api.getReceiptSettings()])
-      .then(([dashboardData, feeData, receiptData]) => {
+    Promise.all([api.getDashboard(), api.getDeliveryFee(), api.getReceiptSettings(), api.getDoctorFee()])
+      .then(([dashboardData, feeData, receiptData, doctorFeeData]) => {
         setData(dashboardData)
         setDeliveryFee(String(feeData.delivery_fee))
+        setDoctorFee(String(doctorFeeData.doctor_fee))
         setPharmacyForm(receiptData)
       })
       .catch((err) => setError(err.message))
@@ -44,6 +48,21 @@ export default function Dashboard() {
       setFeeMessage(err.message)
     } finally {
       setSavingFee(false)
+    }
+  }
+
+  const saveDoctorFee = async (e) => {
+    e.preventDefault()
+    setSavingDoctorFee(true)
+    setDoctorFeeMessage('')
+    try {
+      const result = await api.updateDoctorFee(parseFloat(doctorFee))
+      setDoctorFee(String(result.doctor_fee))
+      setDoctorFeeMessage('Default doctor fee saved.')
+    } catch (err) {
+      setDoctorFeeMessage(err.message)
+    } finally {
+      setSavingDoctorFee(false)
     }
   }
 
@@ -95,6 +114,14 @@ export default function Dashboard() {
   <div className="summary-box">
     <div className="label">Total Products</div>
     <div className="value">{summary.total_products}</div>
+  </div>
+  <div className="summary-box">
+    <div className="label">Patients</div>
+    <div className="value">{summary.total_patients}</div>
+  </div>
+  <div className="summary-box">
+    <div className="label">Doctor Fees Collected</div>
+    <div className="value">{summary.total_doctor_fees.toFixed(2)}</div>
   </div>
         
       </div>
@@ -163,6 +190,34 @@ export default function Dashboard() {
         )}
         <p className="text-muted mt-8" style={{ marginBottom: 0 }}>
           Cashiers can apply this fee at checkout for delivery orders. They can adjust the amount per sale if needed.
+        </p>
+      </div>
+
+      <div className="card mb-16">
+        <div className="card-title">Default Doctor Fee</div>
+        <form onSubmit={saveDoctorFee} className="filter-bar" style={{ marginBottom: 0 }}>
+          <div className="form-group">
+            <label>Amount</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={doctorFee}
+              onChange={(e) => setDoctorFee(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={savingDoctorFee}>
+            {savingDoctorFee ? 'Saving...' : 'Save'}
+          </button>
+        </form>
+        {doctorFeeMessage && (
+          <div className={`alert ${doctorFeeMessage.includes('saved') ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 12, marginBottom: 0 }}>
+            {doctorFeeMessage}
+          </div>
+        )}
+        <p className="text-muted mt-8" style={{ marginBottom: 0 }}>
+          Pre-filled when a patient visit is started at the Point of Sale. Staff can change it per visit.
         </p>
       </div>
 

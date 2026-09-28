@@ -12,6 +12,9 @@ export default function Layout() {
           <NavLink to="/pos" className={({ isActive }) => isActive ? 'active' : ''}>
             Point of Sale
           </NavLink>
+          <NavLink to="/patients" className={({ isActive }) => isActive ? 'active' : ''}>
+            Patients
+          </NavLink>
           {user?.role === 'admin' && (
             <>
               <NavLink to="/inventory" className={({ isActive }) => isActive ? 'active' : ''}>
