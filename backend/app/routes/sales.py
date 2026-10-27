@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.models import Medicine, Patient, Sale, SaleItem, db
 from app.utils import generate_sale_number, validate_medicine_for_sale
@@ -18,7 +19,14 @@ def list_sales():
     sale_number = request.args.get("sale_number", "").strip()
     patient_id = request.args.get("patient_id", type=int)
 
-    query = Sale.query
+    # Load items, cashier and patient together. Without this, every sale in the
+    # list triggers its own database queries, which is very slow on a remote
+    # database (hundreds of round trips) and can time out the request.
+    query = Sale.query.options(
+        selectinload(Sale.items),
+        joinedload(Sale.cashier),
+        joinedload(Sale.patient),
+    )
 
     if patient_id:
         query = query.filter(Sale.patient_id == patient_id)
