@@ -105,7 +105,7 @@ With no configuration the backend uses a local SQLite database (`instance/pharma
 
 | Username | Password | Role |
 |----------|----------|------|
-| `admin` | `admin123` | admin |
+| `admin` | `12345678` | admin |
 | `cashier` | `cashier123` | cashier |
 
 Never use these accounts on a deployed system. See [Production database setup](#1-database-supabase).
