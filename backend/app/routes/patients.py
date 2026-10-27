@@ -3,6 +3,7 @@ from datetime import date
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.models import Patient, Sale, db
 from app.utils import admin_required
@@ -72,7 +73,27 @@ def list_patients():
             )
         )
     patients = query.order_by(Patient.name).limit(limit).all()
-    return jsonify([_patient_with_stats(p) for p in patients])
+
+    # Visit counts for all listed patients in ONE query (not one query per patient)
+    stats = {}
+    ids = [p.id for p in patients]
+    if ids:
+        rows = (
+            db.session.query(Sale.patient_id, func.count(Sale.id), func.max(Sale.created_at))
+            .filter(Sale.patient_id.in_(ids))
+            .group_by(Sale.patient_id)
+            .all()
+        )
+        stats = {pid: (count, last) for pid, count, last in rows}
+
+    result = []
+    for p in patients:
+        count, last = stats.get(p.id, (0, None))
+        d = p.to_dict()
+        d["visit_count"] = count
+        d["last_visit"] = last.isoformat() if last else None
+        result.append(d)
+    return jsonify(result)
 
 
 @patients_bp.route("", methods=["POST"])
@@ -97,8 +118,19 @@ def create_patient():
 @jwt_required()
 def get_patient(patient_id):
     patient = Patient.query.get_or_404(patient_id)
-    visits = patient.visits  # newest first
-    result = _patient_with_stats(patient)
+    visits = (  # newest first, with items/cashier loaded together
+        Sale.query.options(
+            selectinload(Sale.items),
+            joinedload(Sale.cashier),
+            joinedload(Sale.patient),
+        )
+        .filter(Sale.patient_id == patient.id)
+        .order_by(Sale.created_at.desc())
+        .all()
+    )
+    result = patient.to_dict()
+    result["visit_count"] = len(visits)
+    result["last_visit"] = visits[0].created_at.isoformat() if visits else None
     result["visits"] = [v.to_dict() for v in visits]
     result["total_doctor_fees"] = sum(float(v.doctor_fee or 0) for v in visits)
     result["total_spent"] = sum(float(v.total_amount) for v in visits)
