@@ -6,7 +6,8 @@ function getToken() {
 
 async function request(path, options = {}) {
   const headers = {
-    'Content-Type': 'application/json',
+    // File uploads (FormData) must let the browser set the multipart boundary
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers,
   }
   const token = getToken()
@@ -21,6 +22,19 @@ async function request(path, options = {}) {
     throw new Error(data.error || `Request failed (${res.status})`)
   }
   return data
+}
+
+// Downloads a protected file (with the login token) and returns a Blob
+async function requestBlob(path) {
+  const token = getToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || `Request failed (${res.status})`)
+  }
+  return res.blob()
 }
 
 export const api = {
@@ -73,6 +87,18 @@ export const api = {
   updatePatient: (id, data) =>
     request(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePatient: (id) => request(`/patients/${id}`, { method: 'DELETE' }),
+  getInvestigations: (patientId) => request(`/patients/${patientId}/investigations`),
+  uploadInvestigation: (patientId, formData) =>
+    request(`/patients/${patientId}/investigations`, { method: 'POST', body: formData }),
+  updateInvestigation: (patientId, invId, data) =>
+    request(`/patients/${patientId}/investigations/${invId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteInvestigation: (patientId, invId) =>
+    request(`/patients/${patientId}/investigations/${invId}`, { method: 'DELETE' }),
+  getInvestigationFile: (patientId, invId) =>
+    requestBlob(`/patients/${patientId}/investigations/${invId}/file`),
   getDashboard: () => request('/dashboard'),
   getCalendarStats: (year, month) =>
     request(`/dashboard/calendar?year=${year}&month=${month}`),

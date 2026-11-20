@@ -117,6 +117,9 @@ class Patient(db.Model):
     visits = db.relationship(
         "Sale", backref="patient", lazy=True, order_by="Sale.created_at.desc()"
     )
+    investigations = db.relationship(
+        "PatientInvestigation", backref="patient", lazy=True
+    )
 
     @property
     def age(self):
@@ -220,4 +223,53 @@ class SaleItem(db.Model):
             "selling_price": float(self.selling_price),
             "line_total": float(self.line_total),
             "line_profit": float(self.line_profit),
+        }
+
+
+class PatientInvestigation(db.Model):
+    """An investigation result (blood report, X-ray, scan...) attached to a patient.
+
+    The file itself lives in file storage (Supabase Storage in production);
+    this row only records where it is and what it is.
+    """
+
+    __tablename__ = "patient_investigations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(
+        db.Integer, db.ForeignKey("patients.id"), nullable=False, index=True
+    )
+    # Optional link to the visit the test was ordered or reviewed at
+    sale_id = db.Column(db.Integer, db.ForeignKey("sales.id"), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False)  # e.g. "CBC", "Lipid profile"
+    test_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+
+    storage_key = db.Column(db.String(300), unique=True, nullable=False)
+    original_filename = db.Column(db.String(255), nullable=True)
+    content_type = db.Column(db.String(100), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+
+    uploader = db.relationship("User", lazy="joined")
+    sale = db.relationship("Sale", lazy="joined")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "sale_id": self.sale_id,
+            "sale_number": self.sale.sale_number if self.sale else None,
+            "title": self.title,
+            "test_date": self.test_date.isoformat() if self.test_date else None,
+            "notes": self.notes,
+            "original_filename": self.original_filename,
+            "content_type": self.content_type,
+            "is_pdf": self.content_type == "application/pdf",
+            "file_size": self.file_size,
+            "uploaded_by": self.uploaded_by,
+            "uploaded_by_name": self.uploader.username if self.uploader else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }

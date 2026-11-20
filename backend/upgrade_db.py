@@ -1,7 +1,7 @@
 """Upgrade an existing database to the clinic version.
 
 Safe to run any number of times. It:
-  * creates the new `patients` table
+  * creates the new `patients` and `patient_investigations` tables
   * adds the new clinic columns to `sales` and `sale_items` if they are missing
 
 Your existing medicines, sales and users are NOT touched.
@@ -36,7 +36,7 @@ NEW_COLUMNS = {
 def upgrade():
     app = create_app()
     with app.app_context():
-        db.create_all()  # creates `patients` (and any other missing table)
+        db.create_all()  # creates `patients`, `patient_investigations` and any other missing table
 
         inspector = inspect(db.engine)
         for table, columns in NEW_COLUMNS.items():

@@ -27,5 +27,20 @@ class Config:
             break
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Investigation files (blood reports, X-rays...) go to a PRIVATE Supabase
+    # Storage bucket. Use the service-role / secret key; never expose it to the frontend.
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+    SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "investigations")
+    MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
+    # Reject larger request bodies before they are read (a little room for form fields)
+    MAX_CONTENT_LENGTH = (MAX_UPLOAD_MB + 1) * 1024 * 1024
+    # Without Supabase, files are saved on local disk, but only for local
+    # development (SQLite). On Render the disk is wiped on every deploy.
+    UPLOAD_FOLDER = os.environ.get(
+        "UPLOAD_FOLDER", os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+    )
+    ALLOW_LOCAL_UPLOADS = SQLALCHEMY_DATABASE_URI.startswith("sqlite")
     EXPIRY_WARNING_DAYS = int(os.environ.get("EXPIRY_WARNING_DAYS", "30"))
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")

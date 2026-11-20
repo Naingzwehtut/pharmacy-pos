@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 import PatientForm from '../components/PatientForm'
+import PatientInvestigations from '../components/PatientInvestigations'
 import ReceiptModal from '../components/ReceiptModal'
 
 function Field({ label, children }) {
@@ -110,6 +111,8 @@ export default function PatientDetail() {
           <div className="value">{patient.total_spent.toFixed(2)}</div>
         </div>
       </div>
+
+      <PatientInvestigations patientId={patient.id} visits={patient.visits} />
 
       <div className="card">
         <div className="card-title">Visit History</div>

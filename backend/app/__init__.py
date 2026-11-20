@@ -33,6 +33,11 @@ def create_app(config_class=Config):
     app.register_blueprint(settings_bp, url_prefix="/api/settings")
     app.register_blueprint(patients_bp, url_prefix="/api/patients")
 
+    @app.errorhandler(413)
+    def too_large(_e):
+        mb = app.config["MAX_UPLOAD_MB"]
+        return {"error": f"File is too large (max {mb} MB)"}, 413
+
     @app.route("/api/health")
     def health():
         return {"status": "ok"}

@@ -38,6 +38,7 @@ A full-stack point-of-sale and patient-management system for pharmacies and smal
 - Doctor (consultation) fee with a configurable default; consultation-only visits are supported
 - Medicines given to a patient are deducted from pharmacy stock in the same transaction as the visit
 - Allergy warning shown whenever a patient is selected
+- Investigation results per patient: upload blood reports, X-rays and other test results as photos (JPG, PNG, WebP) or PDFs, optionally linked to a visit. Files are kept in a private Supabase Storage bucket and shown only to logged-in staff
 - Full visit history per patient, with diagnosis, medicines, dosage, fees and reprintable receipts
 
 **Inventory**
@@ -99,7 +100,7 @@ python seed.py      # creates the tables, sample medicines and two sample users
 python run.py       # API on http://localhost:5000
 ```
 
-With no configuration the backend uses a local SQLite database (`instance/pharmacy_pos.db`), so nothing else is needed to try the app.
+With no configuration the backend uses a local SQLite database (`instance/pharmacy_pos.db`), so nothing else is needed to try the app. Uploaded investigation files are saved in `backend/uploads/` in this mode.
 
 `seed.py` creates these accounts **for local development only**:
 
@@ -153,6 +154,10 @@ python upgrade_db.py
 | `JWT_SECRET_KEY` | In production | Key used to sign login tokens. Use a different long random value. |
 | `CORS_ORIGINS` | In production | Comma-separated list of allowed frontend origins, for example `https://your-app.vercel.app`. No trailing slash and no spaces. Defaults to `http://localhost:5173`. |
 | `EXPIRY_WARNING_DAYS` | No | Days before expiry at which a medicine is flagged. Default `30`. |
+| `SUPABASE_URL` | In production | Your Supabase project URL, for example `https://abcd1234.supabase.co`. Needed for investigation uploads. |
+| `SUPABASE_SERVICE_KEY` | In production | Supabase **secret** (service_role) key. Backend only: never put it in the frontend. |
+| `SUPABASE_BUCKET` | No | Storage bucket for investigation files. Default `investigations`. |
+| `MAX_UPLOAD_MB` | No | Largest file that can be uploaded. Default `10`. |
 
 `backend/.env.example` lists these names. Generate a secret with `python -c "import secrets; print(secrets.token_hex(32))"`.
 
@@ -200,7 +205,10 @@ The app is designed for Supabase (database), Render (API) and Vercel (frontend).
    ALTER TABLE sales      ENABLE ROW LEVEL SECURITY;
    ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
    ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE patient_investigations ENABLE ROW LEVEL SECURITY;
    ```
+
+6. Create the storage bucket for investigation files (blood reports, scans). Open **Storage**, choose **New bucket**, name it `investigations` and leave **Public bucket turned off**. These are medical records, so the bucket must stay private: the backend reads and writes it with the secret key and passes files only to logged-in users. Then open **Project Settings → API Keys** and copy the **secret** key (or the legacy `service_role` key) for `SUPABASE_SERVICE_KEY`.
 
 ### 2. Backend (Render)
 
@@ -212,7 +220,9 @@ Create a **Web Service** from this repository:
 | Build Command | `pip install -r requirements.txt` |
 | Start Command | `gunicorn run:app --bind 0.0.0.0:$PORT` |
 
-Add the environment variables `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY` and `CORS_ORIGINS` (set `CORS_ORIGINS` to your Vercel address once you have it). Check that `https://<your-service>.onrender.com/api/health` returns `{"status":"ok"}`.
+Add the environment variables `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and `CORS_ORIGINS` (set `CORS_ORIGINS` to your Vercel address once you have it). Check that `https://<your-service>.onrender.com/api/health` returns `{"status":"ok"}`.
+
+Render's disk is wiped on every deploy, so the API never stores uploads on it. If the Supabase Storage variables are missing while a PostgreSQL database is configured, uploading an investigation returns an error instead of saving a file that would be lost.
 
 ### 3. Frontend (Vercel)
 
@@ -257,7 +267,11 @@ All endpoints are under `/api`. Everything except login and health requires a `A
 | `POST` | `/patients` | User | Register a patient |
 | `GET` | `/patients/<id>` | User | Patient with full visit history and totals |
 | `PUT` | `/patients/<id>` | User | Update a patient |
-| `DELETE` | `/patients/<id>` | Admin | Delete a patient with no visits |
+| `DELETE` | `/patients/<id>` | Admin | Delete a patient with no visits and no investigation files |
+| `GET` | `/patients/<id>/investigations` | User | List a patient's investigation results |
+| `POST` | `/patients/<id>/investigations` | User | Upload a result (multipart: `file`, `title`, optional `test_date`, `sale_id`, `notes`) |
+| `GET` | `/patients/<id>/investigations/<inv_id>/file` | User | Download the image or PDF |
+| `PUT` `DELETE` | `/patients/<id>/investigations/<inv_id>` | Admin or uploader | Edit details or delete a result and its file |
 | `GET` | `/sales` | User | List sales (`start_date`, `end_date`, `sale_number`, `patient_id`) |
 | `GET` | `/sales/<id>` | User | One sale |
 | `POST` | `/sales/checkout` | User | Complete a sale or patient visit and deduct stock |
@@ -289,8 +303,9 @@ pharmacy-pos/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py          # app factory and blueprint registration
-│   │   ├── models.py            # User, Medicine, Patient, Sale, SaleItem, AppSetting
+│   │   ├── models.py            # User, Medicine, Patient, PatientInvestigation, Sale, SaleItem, AppSetting
 │   │   ├── utils.py             # admin_required, sale numbers, stock validation
+│   │   ├── storage.py           # investigation files: Supabase Storage (or local disk in dev)
 │   │   └── routes/              # auth, medicines, patients, sales, dashboard, settings
 │   ├── config.py                # configuration from environment variables
 │   ├── run.py                   # entry point (gunicorn run:app)
@@ -301,7 +316,8 @@ pharmacy-pos/
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── components/          # Layout, PatientForm, PatientPicker, Receipt, ReceiptModal
+│   │   ├── components/          # Layout, PatientForm, PatientInvestigations, PatientPicker,
+│   │   │                        # Receipt, ReceiptModal
 │   │   ├── context/             # AuthContext
 │   │   ├── pages/               # Login, POS, Patients, PatientDetail, Inventory,
 │   │   │                        # Dashboard, Calendar, SalesHistory
