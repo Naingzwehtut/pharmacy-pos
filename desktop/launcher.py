@@ -25,7 +25,8 @@ import urllib.request
 import webbrowser
 
 APP_NAME = "Zwe Pharmacy"
-PORT = 47231  # fixed, so the browser remembers language and login between runs
+# Fixed, so the window keeps its language and login between runs (ZWE_PORT only for testing)
+PORT = int(os.environ.get("ZWE_PORT", "47231"))
 
 
 def base_dir():
@@ -209,13 +210,28 @@ def main():
     window = open_window(url, root)
     log.info("Started, window: %s", "app" if window else "default browser")
     if window is not None:
-        window.wait()
-        # If a window of this app was already open, the browser hands over and
-        # exits at once: keep serving until the app's browser profile is closed.
-        while profile_in_use(os.path.join(root, "browser")):
-            time.sleep(2)
+        wait_for_window_closed(window, os.path.join(root, "browser"), log)
     else:
         keep_alive_dialog(url)
+
+
+def wait_for_window_closed(window, profile, log, grace=30):
+    """Return when the user has closed the app window.
+
+    The browser process we start may exit at once: on the very first run Edge
+    restarts itself with the new profile, and if a window of this app is
+    already open it hands over to it. So the browser profile being in use is
+    what counts, with a grace period for the window to appear.
+    """
+    started = time.time()
+    last_seen = started
+    while True:
+        if window.poll() is None or profile_in_use(profile):
+            last_seen = time.time()
+        elif time.time() - started > grace and time.time() - last_seen > 5:
+            log.info("Window closed")
+            return
+        time.sleep(1)
 
 
 def profile_in_use(profile):
