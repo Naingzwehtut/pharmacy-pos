@@ -189,7 +189,7 @@ export default function Calendar() {
         .cal-title {
           font-size: 16px;
           font-weight: 600;
-          color: #1c2b36;
+          color: var(--ink);
         }
         .cal-nav {
           display: flex;
@@ -200,9 +200,9 @@ export default function Calendar() {
           width: 28px;
           height: 28px;
           border-radius: 6px;
-          border: 1px solid #dfe4e8;
-          background: #fff;
-          color: #1f6b43;
+          border: 1px solid var(--line-strong);
+          background: var(--white);
+          color: var(--green);
           font-size: 16px;
           line-height: 1;
           cursor: pointer;
@@ -212,21 +212,21 @@ export default function Calendar() {
           transition: background 0.15s ease;
         }
         .cal-nav-btn:hover {
-          background: #eef5f0;
+          background: var(--green-tint);
         }
         .cal-today-btn {
           padding: 0 10px;
           height: 28px;
           border-radius: 6px;
-          border: 1px solid #dfe4e8;
-          background: #fff;
-          color: #4a5a66;
+          border: 1px solid var(--line-strong);
+          background: var(--white);
+          color: var(--ink-2);
           font-size: 12px;
           cursor: pointer;
           transition: background 0.15s ease;
         }
         .cal-today-btn:hover {
-          background: #f4f6f7;
+          background: var(--paper);
         }
         .cal-grid {
           display: grid;
@@ -239,7 +239,7 @@ export default function Calendar() {
           text-align: center;
           font-size: 11px;
           font-weight: 600;
-          color: #8a97a1;
+          color: var(--muted);
           padding: 4px 0;
         }
         .cal-days {
@@ -253,8 +253,8 @@ export default function Calendar() {
           position: relative;
           aspect-ratio: 1 / 1;
           border-radius: 8px;
-          border: 1px solid #eceef0;
-          background: #fff;
+          border: 1px solid var(--line);
+          background: var(--white);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -265,24 +265,24 @@ export default function Calendar() {
         }
         .cal-cell-has-data {
           cursor: pointer;
-          background: color-mix(in srgb, #1f6b43 calc(var(--intensity) * 55%), #ffffff);
-          border-color: color-mix(in srgb, #1f6b43 calc(var(--intensity) * 40% + 10%), #eceef0);
+          background: color-mix(in srgb, var(--green) calc(var(--intensity) * 55%), var(--white));
+          border-color: color-mix(in srgb, var(--green) calc(var(--intensity) * 40% + 10%), var(--line));
         }
         .cal-cell-has-data:hover {
-          border-color: #1f6b43;
+          border-color: var(--green);
           box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.15);
         }
         .cal-cell-today {
-          border-color: #1f6b43;
+          border-color: var(--green);
           border-width: 2px;
         }
         .cal-day-num {
           font-size: 12px;
           font-weight: 500;
-          color: #45525c;
+          color: var(--ink-2);
         }
         .cal-cell-has-data .cal-day-num {
-          color: #1c2b36;
+          color: var(--ink);
           font-weight: 600;
         }
         .cal-dot {
@@ -291,12 +291,12 @@ export default function Calendar() {
           width: 4px;
           height: 4px;
           border-radius: 50%;
-          background: #27ae60;
+          background: var(--green);
         }
         .cal-tooltip {
           position: absolute;
           transform: translate(-50%, calc(-100% - 10px));
-          background: #1c2b36;
+          background: #1d211f;
           color: #fff;
           border-radius: 8px;
           padding: 10px 12px;
@@ -312,7 +312,7 @@ export default function Calendar() {
           top: 100%;
           transform: translateX(-50%);
           border: 6px solid transparent;
-          border-top-color: #1c2b36;
+          border-top-color: #1d211f;
         }
         .cal-tooltip-date {
           font-size: 11px;

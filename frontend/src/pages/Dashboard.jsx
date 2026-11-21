@@ -7,6 +7,7 @@ import { api } from '../api'
 import { Alert, Empty, ExpiryBadge, Stat } from '../components/ui'
 import { useSettings } from '../context/SettingsContext'
 import { describeQuantity, formatDate, formatNumber } from '../format'
+import { useTheme } from '../context/ThemeContext'
 import { useT } from '../i18n'
 import Calendar from './Calendar'
 
@@ -21,6 +22,10 @@ const compact = (v) => (Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : Math.a
 export default function Dashboard() {
   const { t } = useT()
   const { money } = useSettings()
+  const { theme } = useTheme()
+  const c = theme === 'dark'
+    ? { main: '#5fbf88', second: '#e0a43a', text: '#b9bdb8', grid: '#2c302d', tip: '#1c1f1d' }
+    : { main: '#1f6b43', second: '#a15c07', text: '#4a514d', grid: '#e3e4df', tip: '#ffffff' }
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
@@ -53,13 +58,13 @@ export default function Dashboard() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ left: 0, right: 8, top: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={compact} width={44} />
-                <Tooltip formatter={(v) => money(v)} />
+                <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: c.text }} />
+                <YAxis tick={{ fontSize: 11, fill: c.text }} tickFormatter={compact} width={44} />
+                <Tooltip formatter={(v) => money(v)} contentStyle={{ background: c.tip, border: `1px solid ${c.grid}` }} labelStyle={{ color: c.text }} />
                 <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#1f6b43" name={t('dash.revenue')} strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="profit" stroke="#a15c07" name={t('dash.profit')} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="revenue" stroke={c.main} name={t('dash.revenue')} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="profit" stroke={c.second} name={t('dash.profit')} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -70,11 +75,11 @@ export default function Dashboard() {
             <div className="chart-container">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.best_selling.slice(0, 8)} layout="vertical" margin={{ left: 8, right: 16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={compact} />
-                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => money(v)} />
-                  <Bar dataKey="revenue" fill="#1f6b43" name={t('dash.revenue')} radius={[0, 4, 4, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: c.text }} tickFormatter={compact} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: c.text }} />
+                  <Tooltip formatter={(v) => money(v)} contentStyle={{ background: c.tip, border: `1px solid ${c.grid}` }} labelStyle={{ color: c.text }} />
+                  <Bar dataKey="revenue" fill={c.main} name={t('dash.revenue')} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
