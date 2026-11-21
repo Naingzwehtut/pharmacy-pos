@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import DataBackup from '../components/DataBackup'
 import Receipt from '../components/Receipt'
 import { Alert } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { useT } from '../i18n'
 
@@ -35,6 +37,7 @@ const SAMPLE_SALE = {
 export default function Settings() {
   const { t } = useT()
   const { settings, setSettings } = useSettings()
+  const { system } = useAuth()
   const [form, setForm] = useState(settings)
   const [msg, setMsg] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -117,13 +120,14 @@ export default function Settings() {
             <div className="pay-methods">
               {ALL_METHODS.map((m) => (
                 <button key={m} type="button" className={`pay-chip pay-${m} ${methods.includes(m) ? 'on' : ''}`} onClick={() => toggleMethod(m)}>
-                  {methods.includes(m) ? '✓ ' : ''}{t(`pay.${m}`)}
+                  {t(`pay.${m}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>{saving ? t('common.saving') : t('common.save')}</button>
+          {system.desktop && <div style={{ marginTop: 24 }}><DataBackup /></div>}
         </form>
 
         <div className="settings-preview">
