@@ -11,11 +11,12 @@
 ![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-> **This is the `v2` branch.** The original version is unchanged on `main`. To move an existing v1 database to v2, see [Upgrading from v1](#upgrading-from-v1).
+> **Two ways to run it:** as a **Windows desktop app** that works offline with all data on the shop computer (see [desktop/README.md](desktop/README.md)), or as a **website** on Supabase + Render + Vercel (below). The original version is unchanged on `main`.
 
 ## Contents
 
 - [What's new in v2](#whats-new-in-v2)
+- [Desktop app](#desktop-app)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Getting started](#getting-started)
@@ -46,9 +47,15 @@
 | Dashboard | Today vs yesterday, this month, stock value, outstanding credit, low stock by reorder level, expiring batches, payments by method. |
 | Users | User management screen, a new **pharmacist** role, change password, deactivate accounts (takes effect immediately). Cashiers no longer see cost or profit. |
 | Myanmar time | “Today”, daily totals and date filters use Myanmar time (UTC+06:30), so late-night and early-morning sales land on the right day. |
+| Desktop app | Runs offline on one Windows PC: first-run setup, one-click import from Supabase, automatic daily backups, restore. |
+| Drug photos | Add a photo of the box or strip to each medicine; shown at the till and in Inventory. Photos are resized before upload. |
 | Look | A plain, work-focused design: light sidebar grouped into Shop / Stock / Office, flat tables, IBM Plex Sans with Noto Sans Myanmar. |
 | Till speed | Barcode scanner support, F2 to search, Enter to add, F9 to check out. The cart survives a page reload or power cut. Works on phones and tablets. |
 | Quality | Automated backend test suite (`pytest`). Dashboard code is loaded only when needed, so the till loads faster on slow connections. |
+
+## Desktop app
+
+Download or build `ZwePharmacy.exe`, double-click it, and choose **Start a new shop** or **Move data from the cloud**. Everything is stored in `%LOCALAPPDATA%\ZwePharmacy` and backed up automatically every day. Full guide, including moving your Supabase data: [desktop/README.md](desktop/README.md).
 
 ## Features
 
