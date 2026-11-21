@@ -19,6 +19,7 @@
   --blue-tint: #eef3fa;
   --radius: 6px;
   --font: 'IBM Plex Sans', 'Noto Sans Myanmar', 'Myanmar Text', system-ui, 'Segoe UI', sans-serif;
+  --hover: #fafaf7;
   --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
   /* names used by charts and older components */
@@ -206,7 +207,7 @@ input:disabled { background: var(--paper); color: var(--muted); }
 table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 table.data-table th, table.data-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 table.data-table th { font-size: 12.5px; font-weight: 500; color: var(--muted); border-bottom-color: var(--line-strong); white-space: nowrap; }
-table.data-table tbody tr:hover td { background: #fafaf7; }
+table.data-table tbody tr:hover td { background: var(--hover); }
 table.data-table tr:last-child td { border-bottom: 0; }
 table.data-table .num { text-align: right; white-space: nowrap; }
 table.data-table.inner { background: var(--white); border: 1px solid var(--line); margin-top: 8px; }
@@ -313,7 +314,7 @@ tr.clickable { cursor: pointer; }
 /* ---------- login ---------- */
 .login-page { min-height: 100vh; display: grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr); background: var(--white); }
 .login-side {
-  background: var(--green-dark); color: #e6efe9;
+  background: #164f31; color: #e6efe9;
   padding: 40px 48px; display: flex; flex-direction: column; justify-content: space-between;
 }
 .login-side .logo { color: var(--white); }
@@ -338,7 +339,7 @@ tr.clickable { cursor: pointer; }
   padding: 9px 14px; border-bottom: 1px solid var(--line);
 }
 .product-row:last-child { border-bottom: 0; }
-.product-row:hover { background: #fafaf7; }
+.product-row:hover { background: var(--hover); }
 .product-name { font-weight: 600; }
 .product-meta { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
 .product-meta .mm { color: var(--ink-2); }
@@ -582,4 +583,69 @@ tr.clickable { cursor: pointer; }
 @media (max-width: 860px) {
   .product-row { flex-direction: row; flex-wrap: wrap; }
   .product-row .pack-buttons { flex-basis: 100%; }
+}
+
+/* ---------- dark mode ---------- */
+.theme-switch { margin-top: 6px; }
+.theme-switch button { font-size: 12px; padding: 3px 8px; }
+
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --green: #3f9d69;
+    --green-dark: #7fd0a1;
+    --green-tint: #18291f;
+    --ink: #e6e8e5;
+    --ink-2: #b6bbb6;
+    --muted: #8a908b;
+    --line: #2b2f2c;
+    --line-strong: #3b403c;
+    --paper: #121413;
+    --white: #1a1d1b;
+    --hover: #202421;
+    --red: #f2756b;
+    --red-tint: #2d1917;
+    --amber: #e3a640;
+    --amber-tint: #2b2314;
+    --blue: #86b0ec;
+    --blue-tint: #18222f;
+  }
+
+  :root[data-theme="dark"] .btn-primary { color: #fff; }
+  :root[data-theme="dark"] .btn-primary:hover { background: #348a5a; border-color: #348a5a; }
+  :root[data-theme="dark"] table.data-table tbody tr:hover td,
+  :root[data-theme="dark"] .product-row:hover { background: var(--hover); }
+  :root[data-theme="dark"] .login-side { background: #10331f; }
+  :root[data-theme="dark"] .modal-overlay { background: rgba(0, 0, 0, 0.6); }
+  :root[data-theme="dark"] .modal { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5); border: 1px solid var(--line); }
+  :root[data-theme="dark"] .patient-results { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45); }
+  :root[data-theme="dark"] .dosage-input { background: var(--paper) !important; }
+
+  /* tags and alerts: tinted background, no light borders */
+  :root[data-theme="dark"] .badge-ok,
+  :root[data-theme="dark"] .badge-warning,
+  :root[data-theme="dark"] .badge-danger,
+  :root[data-theme="dark"] .badge-expired,
+  :root[data-theme="dark"] .badge-info,
+  :root[data-theme="dark"] .badge-role-pharmacist { border-color: transparent; }
+  :root[data-theme="dark"] .badge-low { background: #251d33; color: #c4a8ee; border-color: transparent; }
+  :root[data-theme="dark"] .badge-role-admin { background: var(--ink); color: var(--paper); }
+  :root[data-theme="dark"] .alert-error { color: #ffb4ad; border-color: #4a2420; }
+  :root[data-theme="dark"] .alert-success { color: var(--green-dark); border-color: #24402f; }
+  :root[data-theme="dark"] .alert-warning { color: #f0c77a; border-color: #4a3a1c; }
+  :root[data-theme="dark"] .allergy-alert { color: #ffb4ad; }
+  :root[data-theme="dark"] .change-box { border-color: #24402f; }
+  :root[data-theme="dark"] .change-box.short { border-color: #4a2420; }
+  :root[data-theme="dark"] .change-box.warn { border-color: #4a3a1c; color: #f0c77a; }
+  :root[data-theme="dark"] .card-danger { border-color: #4a2420; }
+  :root[data-theme="dark"] .row-voided td { text-decoration-color: rgba(242, 117, 107, 0.5); }
+
+  /* receipts always look like white paper */
+  :root[data-theme="dark"] .receipt-print,
+  :root[data-theme="dark"] .receipt-preview { background: #fff; color: #000; padding: 12px; border-radius: 6px; }
+  :root[data-theme="dark"] .modal-receipt { background: var(--white); }
+}
+
+@media print {
+  :root { color-scheme: light; }
 }

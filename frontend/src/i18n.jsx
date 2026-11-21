@@ -22,6 +22,10 @@ const en = {
   'nav.changePassword': 'Change password',
   'nav.menu': 'Menu',
   'nav.groupShop': 'Shop',
+  'theme.label': 'Theme',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.system': 'Auto',
   'nav.groupStock': 'Stock',
   'nav.groupOffice': 'Office',
 
@@ -436,6 +440,10 @@ const my = {
   'nav.changePassword': 'စကားဝှက်ပြောင်းရန်',
   'nav.menu': 'မီနူး',
   'nav.groupShop': 'ဆိုင်',
+  'theme.label': 'အရောင်',
+  'theme.light': 'အလင်း',
+  'theme.dark': 'အမှောင်',
+  'theme.system': 'အလိုအလျောက်',
   'nav.groupStock': 'ကုန်ပစ္စည်း',
   'nav.groupOffice': 'ရုံး',
 

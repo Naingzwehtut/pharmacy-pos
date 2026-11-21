@@ -7,6 +7,14 @@
     <meta name="description" content="Zwe Pharmacy point of sale" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Zwe Pharmacy</title>
+    <script>
+      // Apply the saved light/dark theme before the app loads (no white flash)
+      try {
+        var t = localStorage.getItem('ui_theme')
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

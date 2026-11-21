@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
+import { useTheme } from '../context/ThemeContext'
 import { useT } from '../i18n'
 import Logo, { APP_NAME, APP_NAME_MM } from './Logo'
 import { Alert, Modal } from './ui'
@@ -85,6 +86,7 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const { settings } = useSettings()
   const { t, lang, setLang } = useT()
+  const { mode, setMode } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
   const location = useLocation()
@@ -120,6 +122,11 @@ export default function Layout() {
           <div className="lang-switch" role="group" aria-label="Language">
             <button type="button" className={lang === 'my' ? 'on' : ''} onClick={() => setLang('my')}>မြန်မာ</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>English</button>
+          </div>
+          <div className="lang-switch theme-switch" role="group" aria-label={t('theme.label')}>
+            {['light', 'dark', 'system'].map((m) => (
+              <button key={m} type="button" className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{t(`theme.${m}`)}</button>
+            ))}
           </div>
           <div className="user-box">
             <div className="user-name">{user?.full_name || user?.username}</div>

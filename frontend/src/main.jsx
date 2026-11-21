@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { SettingsProvider } from './context/SettingsContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { LanguageProvider } from './i18n'
 // Fonts are bundled so Myanmar text displays correctly without internet
 import '@fontsource/ibm-plex-sans/latin-400.css'
@@ -20,6 +21,7 @@ import './styles/index.css'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
+      <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
           <SettingsProvider>
@@ -27,6 +29,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </SettingsProvider>
         </AuthProvider>
       </LanguageProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 )
