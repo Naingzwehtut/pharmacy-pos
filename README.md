@@ -308,6 +308,7 @@ pharmacy-pos/
 │   │   ├── storage.py           # investigation files: Supabase Storage (or local disk in dev)
 │   │   └── routes/              # auth, medicines, patients, sales, dashboard, settings
 │   ├── config.py                # configuration from environment variables
+│   ├── gunicorn.conf.py         # workers/threads, loaded automatically by gunicorn
 │   ├── run.py                   # entry point (gunicorn run:app)
 │   ├── seed.py                  # sample users, medicines and patient
 │   ├── upgrade_db.py            # create or upgrade tables on an existing database

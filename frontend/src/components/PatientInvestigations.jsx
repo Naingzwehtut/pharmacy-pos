@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 
@@ -18,6 +18,47 @@ const TEST_SUGGESTIONS = [
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf'
 const MAX_MB = 10
+// Phone photos are 3-5 MB. Shrinking them to 2000 px (still easy to read)
+// makes uploads and viewing several times faster and saves storage.
+const MAX_SIDE = 2000
+const SHRINK_OVER_BYTES = 600 * 1024
+
+async function decodeImage(file) {
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' })
+  } catch {
+    return createImageBitmap(file) // older browsers without the options argument
+  }
+}
+
+// Returns a smaller JPEG copy of a photo, or the original file when it is a
+// PDF, already small, can't be decoded, or would not get any smaller.
+async function shrinkImage(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || typeof createImageBitmap !== 'function') return file
+  let bitmap
+  try {
+    bitmap = await decodeImage(file)
+  } catch {
+    return file
+  }
+  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+  if (scale === 1 && file.size <= SHRINK_OVER_BYTES) {
+    bitmap.close?.()
+    return file
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#fff' // transparent PNG areas become white, not black
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close?.()
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+  if (!blob || blob.size >= file.size) return file
+  const name = `${file.name.replace(/\.[^.]+$/, '') || 'report'}.jpg`
+  return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() })
+}
 
 function todayLocal() {
   return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in the clinic's time zone
@@ -109,21 +150,34 @@ function InvestigationForm({ patientId, visits, investigation, onSaved, onClose 
   }, [file])
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
+  const [preparing, setPreparing] = useState(false)
+  const [sizeNote, setSizeNote] = useState('')
+  const pickId = useRef(0)
 
-  const handleFile = (e) => {
-    const f = e.target.files?.[0] || null
+  const handleFile = async (e) => {
+    const input = e.target
+    const original = input.files?.[0] || null
+    const id = ++pickId.current // ignore results from an earlier pick
     setError('')
-    if (f && f.size > MAX_MB * 1024 * 1024) {
+    setSizeNote('')
+    setFile(null)
+    if (!original) return
+    setPreparing(true)
+    const f = await shrinkImage(original).catch(() => original)
+    if (id !== pickId.current) return
+    setPreparing(false)
+    if (f.size > MAX_MB * 1024 * 1024) {
       setError(`File is too large (max ${MAX_MB} MB)`)
-      e.target.value = ''
-      setFile(null)
+      input.value = ''
       return
     }
+    if (f !== original) setSizeNote(`Photo reduced from ${formatSize(original.size)} to ${formatSize(f.size)}`)
     setFile(f)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (preparing) return
     if (!editing && !file) return setError('Choose an image or PDF')
     if (!form.title.trim()) return setError('Test name is required')
     setSaving(true)
@@ -155,6 +209,8 @@ function InvestigationForm({ patientId, visits, investigation, onSaved, onClose 
               <label>Report image or PDF *</label>
               <input type="file" accept={ACCEPT} onChange={handleFile} />
               <div className="text-muted">JPG, PNG, WebP or PDF, up to {MAX_MB} MB. On a phone you can take a photo.</div>
+              {preparing && <div className="text-muted">Preparing photo...</div>}
+              {sizeNote && <div className="text-muted">{sizeNote}</div>}
               {preview && <img src={preview} alt="Preview" className="inv-preview" />}
             </div>
           )}
@@ -192,7 +248,7 @@ function InvestigationForm({ patientId, visits, investigation, onSaved, onClose 
           </div>
           <div className="modal-actions">
             <button type="button" className="btn" onClick={onClose} disabled={saving}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button type="submit" className="btn btn-primary" disabled={saving || preparing}>
               {saving ? (editing ? 'Saving...' : 'Uploading...') : editing ? 'Save' : 'Upload'}
             </button>
           </div>
