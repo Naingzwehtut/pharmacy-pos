@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { api } from '../api'
 import PatientPicker from '../components/PatientPicker'
 import ReceiptModal from '../components/ReceiptModal'
-import { Alert } from '../components/ui'
+import { Alert, DrugThumb } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { describeQuantity, formatDate, formatNumber } from '../format'
@@ -354,6 +354,7 @@ export default function POS() {
               <div className="product-list">
                 {medicines.map((m) => (
                   <div key={m.id} className="product-row">
+                    <DrugThumb medicine={m} />
                     <div className="product-info">
                       <div className="product-name">
                         {m.name}

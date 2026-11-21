@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
-import { Alert, Empty, ExpiryBadge, Modal, Tabs } from '../components/ui'
+import { Alert, DrugThumb, Empty, ExpiryBadge, Modal, Tabs } from '../components/ui'
+import { resizeImage } from '../image'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { describeQuantity, formatDate, formatDateTime, formatNumber } from '../format'
@@ -16,6 +17,27 @@ const EMPTY_FORM = {
 
 const REASONS = ['count', 'damaged', 'expired', 'lost', 'returned_to_supplier', 'other']
 
+function PhotoPicker({ medicine, photo, onPick, onRemove }) {
+  const { t } = useT()
+  const preview = photo ? URL.createObjectURL(photo) : medicine?.has_image ? api.medicineImageUrl(medicine) : null
+  return (
+    <div className="photo-picker">
+      <div className="photo-box">
+        {preview ? <img src={preview} alt="" /> : <span className="text-muted small">{t('inv.noPhoto')}</span>}
+      </div>
+      <div className="photo-actions">
+        <label className="btn btn-sm">
+          {preview ? t('inv.changePhoto') : t('inv.addPhoto')}
+          <input type="file" accept="image/*" capture="environment" hidden
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onPick(f) }} />
+        </label>
+        {preview && <button type="button" className="btn btn-sm btn-danger-ghost" onClick={onRemove}>{t('common.delete')}</button>}
+        <div className="text-muted small">{t('inv.photoHelp')}</div>
+      </div>
+    </div>
+  )
+}
+
 function MedicineForm({ medicine, categories, onSaved, onClose }) {
   const { t } = useT()
   const [form, setForm] = useState(() => {
@@ -28,7 +50,18 @@ function MedicineForm({ medicine, categories, onSaved, onClose }) {
   })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [photo, setPhoto] = useState(null) // resized Blob waiting to upload
+  const [removePhoto, setRemovePhoto] = useState(false)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
+
+  const pickPhoto = async (file) => {
+    try {
+      setPhoto(await resizeImage(file))
+      setRemovePhoto(false)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -41,7 +74,9 @@ function MedicineForm({ medicine, categories, onSaved, onClose }) {
       delete payload.batch_number
     }
     try {
-      const saved = medicine ? await api.updateMedicine(medicine.id, payload) : await api.createMedicine(payload)
+      let saved = medicine ? await api.updateMedicine(medicine.id, payload) : await api.createMedicine(payload)
+      if (photo) saved = await api.uploadMedicineImage(saved.id, photo)
+      else if (removePhoto && saved.has_image) saved = await api.deleteMedicineImage(saved.id)
       onSaved(saved)
     } catch (err) {
       setError(err.message)
@@ -53,6 +88,12 @@ function MedicineForm({ medicine, categories, onSaved, onClose }) {
     <Modal title={medicine ? t('inv.edit') : t('inv.add')} onClose={onClose} wide>
       <Alert>{error}</Alert>
       <form onSubmit={submit}>
+        <PhotoPicker
+          medicine={removePhoto ? null : medicine}
+          photo={photo}
+          onPick={pickPhoto}
+          onRemove={() => { setPhoto(null); setRemovePhoto(true) }}
+        />
         <div className="form-row">
           <div className="form-group"><label>{t('inv.name')} *</label><input value={form.name} onChange={set('name')} required autoFocus /></div>
           <div className="form-group"><label>{t('inv.generic')}</label><input value={form.generic_name} onChange={set('generic_name')} /></div>
@@ -353,13 +394,16 @@ export default function Inventory() {
               <tbody>
                 {medicines.map((m) => (
                   <tr key={m.id} className={m.is_active ? '' : 'row-muted'}>
-                    <td>
+                    <td className="name-cell">
+                      <DrugThumb medicine={m} size={36} />
+                      <div>
                       <div className="strong">
                         {m.name}
                         {m.requires_prescription && <span className="badge badge-danger badge-xs">Rx</span>}
                       </div>
                       <div className="text-muted small">
                         {[m.name_mm, m.generic_name, m.barcode, m.shelf_location && `${t('inv.shelf')} ${m.shelf_location}`].filter(Boolean).join(' · ')}
+                      </div>
                       </div>
                     </td>
                     <td>{m.category}</td>

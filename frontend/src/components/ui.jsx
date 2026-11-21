@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { api } from '../api'
 import { useT } from '../i18n'
 
 export function Modal({ title, onClose, children, wide = false, className = '' }) {
@@ -114,3 +115,14 @@ export function Tabs({ tabs, value, onChange }) {
     </div>
   )
 }
+
+/** Small drug photo, or the first letters of the name when there is none. */
+export function DrugThumb({ medicine, size = 40 }) {
+  const style = { width: size, height: size }
+  if (medicine.has_image) {
+    return <img className="drug-thumb" style={style} src={api.medicineImageUrl(medicine)} alt="" loading="lazy" />
+  }
+  const letters = medicine.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()
+  return <div className="drug-thumb drug-thumb-empty" style={style}>{letters}</div>
+}
+

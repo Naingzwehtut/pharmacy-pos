@@ -557,3 +557,29 @@ tr.clickable { cursor: pointer; }
   .login-side { padding: 20px 24px; }
   .login-side-text, .login-side-foot { display: none; }
 }
+
+/* ---------- drug photos ---------- */
+.drug-thumb { border-radius: 4px; border: 1px solid var(--line); object-fit: cover; background: var(--white); flex-shrink: 0; }
+.drug-thumb-empty { display: grid; place-items: center; background: var(--paper); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+.product-row { justify-content: flex-start; }
+.product-row .product-info { flex: 1; min-width: 0; }
+.name-cell { display: flex; gap: 10px; align-items: flex-start; }
+.photo-picker { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.photo-box { width: 96px; height: 96px; border: 1px dashed var(--line-strong); border-radius: var(--radius); display: grid; place-items: center; overflow: hidden; background: var(--paper); flex-shrink: 0; }
+.photo-box img { width: 100%; height: 100%; object-fit: cover; }
+.photo-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.photo-actions .small { flex-basis: 100%; }
+
+/* ---------- desktop setup & backups ---------- */
+.setup-page { min-height: 100vh; display: flex; justify-content: center; padding: 40px 16px; background: var(--paper); }
+.setup-box { width: 100%; max-width: 680px; background: var(--white); border: 1px solid var(--line); border-radius: 8px; padding: 24px 28px 28px; align-self: flex-start; }
+.setup-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+.setup-box h1 { font-size: 22px; margin-bottom: 4px; }
+.data-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.path { font-family: var(--mono); font-size: 12px; background: var(--paper); padding: 2px 6px; border-radius: 3px; word-break: break-all; }
+.inline-form { display: flex; gap: 8px; }
+.inline-form input { flex: 1; }
+@media (max-width: 860px) {
+  .product-row { flex-direction: row; flex-wrap: wrap; }
+  .product-row .pack-buttons { flex-basis: 100%; }
+}
