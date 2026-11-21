@@ -15,7 +15,7 @@ def batches():
 
 
 def test_health(client):
-    assert client.get("/api/health").json["version"] == "2.0.0"
+    assert client.get("/api/health").json["version"] == "2.1.0"
 
 
 def test_checkout_fefo_units_and_change(client, cashier, medicine):
