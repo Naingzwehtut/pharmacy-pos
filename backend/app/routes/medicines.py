@@ -351,3 +351,88 @@ def stock_value():
         func.coalesce(func.sum(MedicineBatch.quantity * MedicineBatch.cost_price), 0),
     ).filter(MedicineBatch.quantity > 0, MedicineBatch.expiry_date < today).scalar()
     return jsonify({"sellable_value": float(rows), "expired_value": float(expired)})
+
+
+# ---------------------------------------------------------------------------
+# Drug photos
+# ---------------------------------------------------------------------------
+
+MAX_IMAGE_MB = 5
+
+
+@medicines_bp.route("/<int:medicine_id>/image", methods=["GET"])
+def get_image(medicine_id):
+    """Public on purpose: product photos are not private, and <img> tags cannot
+    send a login token. The URL includes a version, so it can be cached."""
+    from flask import Response
+
+    from app import storage
+
+    medicine = Medicine.query.get_or_404(medicine_id)
+    if not medicine.image_key:
+        return error("No photo", 404)
+    try:
+        data = storage.load(medicine.image_key)
+    except storage.StorageError as e:
+        return error(str(e), 502)
+    ext = medicine.image_key.rsplit(".", 1)[-1]
+    mimetype = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(ext, "application/octet-stream")
+    resp = Response(data, mimetype=mimetype)
+    resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
+@medicines_bp.route("/<int:medicine_id>/image", methods=["POST"])
+@jwt_required()
+@role_required(*STOCK_ROLES)
+def upload_image(medicine_id):
+    import uuid
+
+    from app import storage
+    from app.routes.patients import _detect_file_type
+
+    medicine = Medicine.query.get_or_404(medicine_id)
+    if not storage.is_configured():
+        return error("File storage is not configured on the server", 503)
+    upload = request.files.get("file")
+    if not upload or not upload.filename:
+        return error("Choose a photo")
+    data = upload.read(MAX_IMAGE_MB * 1024 * 1024 + 1)
+    if len(data) > MAX_IMAGE_MB * 1024 * 1024:
+        return error(f"Photo is too large (max {MAX_IMAGE_MB} MB)", 413)
+    content_type, ext = _detect_file_type(data)
+    if not content_type or not content_type.startswith("image/"):
+        return error("Only JPG, PNG or WebP photos are allowed")
+
+    old_key = medicine.image_key
+    key = f"medicines/{medicine.id}/{uuid.uuid4().hex}{ext}"
+    try:
+        storage.save(key, data, content_type)
+    except storage.StorageError as e:
+        return error(str(e), 502)
+    medicine.image_key = key
+    db.session.commit()
+    if old_key:
+        try:
+            storage.delete(old_key)
+        except storage.StorageError:
+            current_app.logger.warning("Could not delete old photo %s", old_key)
+    return jsonify(_public(medicine.to_dict(_warning_days())))
+
+
+@medicines_bp.route("/<int:medicine_id>/image", methods=["DELETE"])
+@jwt_required()
+@role_required(*STOCK_ROLES)
+def delete_image(medicine_id):
+    from app import storage
+
+    medicine = Medicine.query.get_or_404(medicine_id)
+    if medicine.image_key:
+        try:
+            storage.delete(medicine.image_key)
+        except storage.StorageError:
+            current_app.logger.warning("Could not delete photo %s", medicine.image_key)
+        medicine.image_key = None
+        db.session.commit()
+    return jsonify(_public(medicine.to_dict(_warning_days())))

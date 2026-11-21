@@ -77,6 +77,9 @@ class Medicine(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     reorder_level = db.Column(db.Integer, nullable=False, default=10)
 
+    # Product photo (optional). The file lives in file storage, like investigations.
+    image_key = db.Column(db.String(300), nullable=True)
+
     # v2: selling units. Stock is always counted in the base unit (tablet,
     # capsule, bottle...). A strip and a box are optional bigger packs.
     unit_name = db.Column(db.String(30), nullable=False, default="tablet")
@@ -173,6 +176,9 @@ class Medicine(db.Model):
             "is_low_stock": self.stock_quantity <= (self.reorder_level or 0),
             "profit_per_unit": _f(self.selling_price) - _f(self.cost_price),
             "created_at": iso_utc(self.created_at),
+            "has_image": bool(self.image_key),
+            # changes whenever the photo changes, so browsers reload it
+            "image_version": self.image_key.rsplit("/", 1)[-1].split(".")[0][:12] if self.image_key else None,
         }
         if include_batches:
             d["batches"] = [
