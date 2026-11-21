@@ -27,6 +27,7 @@ SETTINGS = {
     "currency_label": ("text", "Ks"),
     "default_delivery_fee": ("number", "0"),
     "default_doctor_fee": ("number", "0"),
+    "default_doctor_name": ("text", "Dr Ye Htut"),
     "cashier_max_discount_percent": ("number", "10"),
     "enabled_payment_methods": ("text", "cash,kbzpay,wavepay,ayapay,cbpay,mpu_card,bank_transfer,credit"),
 }

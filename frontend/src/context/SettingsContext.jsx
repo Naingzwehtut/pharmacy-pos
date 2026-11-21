@@ -16,6 +16,7 @@ const DEFAULTS = {
   currency_label: 'Ks',
   default_delivery_fee: 0,
   default_doctor_fee: 0,
+  default_doctor_name: 'Dr Ye Htut',
   cashier_max_discount_percent: 10,
   enabled_payment_methods: 'cash,kbzpay,wavepay,ayapay,cbpay,mpu_card,bank_transfer,credit',
 }

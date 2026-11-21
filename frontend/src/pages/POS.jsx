@@ -9,7 +9,6 @@ import { useSettings } from '../context/SettingsContext'
 import { describeQuantity, formatDate, formatNumber } from '../format'
 import { useT } from '../i18n'
 
-const DOCTOR_KEY = 'last_doctor_name'
 const DRAFT_KEY = 'pos_draft_v2'
 
 function loadDraft() {
@@ -49,7 +48,7 @@ export default function POS() {
   const [completedSale, setCompletedSale] = useState(null)
 
   const [patient, setPatient] = useState(location.state?.patient || draft?.patient || null)
-  const [doctorName, setDoctorName] = useState(() => localStorage.getItem(DOCTOR_KEY) || '')
+  const [doctorName, setDoctorName] = useState('')
   const [symptoms, setSymptoms] = useState('')
   const [diagnosis, setDiagnosis] = useState('')
   const [visitNotes, setVisitNotes] = useState('')
@@ -72,8 +71,9 @@ export default function POS() {
 
   useEffect(() => {
     setDoctorFee((v) => v || String(settings.default_doctor_fee || ''))
+    setDoctorName((v) => v || settings.default_doctor_name || '')
     setDeliveryFee((v) => v || String(settings.default_delivery_fee || ''))
-  }, [settings.default_doctor_fee, settings.default_delivery_fee])
+  }, [settings.default_doctor_fee, settings.default_delivery_fee, settings.default_doctor_name])
 
   useEffect(() => {
     saveDraft(cart.length ? { cart, patient } : null)
@@ -208,6 +208,7 @@ export default function POS() {
     setSymptoms('')
     setDiagnosis('')
     setVisitNotes('')
+    setDoctorName(settings.default_doctor_name || '')
     setDiscountInput('')
     setMethod('cash')
     setTendered('')
@@ -236,7 +237,6 @@ export default function POS() {
     }
     setCheckoutLoading(true)
     try {
-      if (doctorName.trim()) localStorage.setItem(DOCTOR_KEY, doctorName.trim())
       const sale = await api.checkout({
         items: cart.map((c) => ({
           medicine_id: c.medicine_id,

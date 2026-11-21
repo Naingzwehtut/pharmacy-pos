@@ -17,7 +17,7 @@ const SAMPLE_SALE = {
   patient_id: 1,
   patient_number: 'P00001',
   patient_name: 'Daw Aye Aye',
-  doctor_name: 'Dr. Khin Mar',
+  doctor_name: 'Dr Ye Htut',
   items: [
     { id: 1, medicine_name: 'Paracap 500mg', unit_label: 'strip', unit_size: 10, unit_qty: 2, unit_price: 500, line_total: 1000, dosage: '1 tablet 3 times a day, 3 days' },
     { id: 2, medicine_name: 'ORS (Royal-D)', unit_label: 'sachet', unit_size: 1, unit_qty: 3, unit_price: 200, line_total: 600 },
@@ -109,6 +109,7 @@ export default function Settings() {
           <div className="card">
             <div className="card-title">{t('set.fees')}</div>
             <div className="form-row">
+              <div className="form-group"><label>{t('set.doctorName')}</label><input value={form.default_doctor_name || ''} onChange={set('default_doctor_name')} /></div>
               <div className="form-group"><label>{t('set.doctorFee')}</label><input type="number" min="0" value={form.default_doctor_fee} onChange={set('default_doctor_fee')} /></div>
               <div className="form-group"><label>{t('set.deliveryFee')}</label><input type="number" min="0" value={form.default_delivery_fee} onChange={set('default_delivery_fee')} /></div>
               <div className="form-group"><label>{t('set.maxDiscount')}</label><input type="number" min="0" max="100" value={form.cashier_max_discount_percent} onChange={set('cashier_max_discount_percent')} /></div>

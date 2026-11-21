@@ -185,6 +185,7 @@ def test_settings_pagination_and_export(client, admin, cashier, medicine):
     assert client.put("/api/settings", headers=cashier, json={"currency_label": "K"}).status_code == 403
     res = client.put("/api/settings", headers=admin, json={"receipt_myanmar_digits": True, "currency_label": "ကျပ်"})
     assert res.json["receipt_myanmar_digits"] is True and res.json["currency_label"] == "ကျပ်"
+    assert res.json["default_doctor_name"] == "Dr Ye Htut"
     for _ in range(3):
         client.post("/api/sales/checkout", headers=cashier, json={"items": [{"medicine_id": medicine, "quantity": 1}]})
     page = client.get("/api/sales?page=1&per_page=2", headers=admin).json

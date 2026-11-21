@@ -148,7 +148,7 @@ def _demo_sales():
             patient = rng.choice(patients) if rng.random() < 0.2 else None
             if patient:
                 sale.patient_id = patient.id
-                sale.doctor_name = "Dr. Khin Mar"
+                sale.doctor_name = "Dr Ye Htut"
                 sale.doctor_fee = 5000
                 sale.diagnosis = rng.choice(["Common cold", "Fever", "Gastritis", "Hypertension follow-up"])
             db.session.add(sale)
