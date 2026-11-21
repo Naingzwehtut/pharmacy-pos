@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useT } from '../i18n'
 
 export default function Login() {
-  const { user, login } = useAuth()
+  const { user, login, system } = useAuth()
   const { t, lang, setLang } = useT()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
@@ -14,6 +14,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   if (user) return <Navigate to="/pos" replace />
+  if (system.needs_setup) return <Navigate to="/setup" replace />
 
   const handleSubmit = async (e) => {
     e.preventDefault()

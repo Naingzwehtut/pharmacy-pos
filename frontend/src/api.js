@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Web: VITE_API_URL (e.g. the Render address). Desktop app: the same local server ('/api').
+// Vite dev server (port 5173) talks to the Flask dev server on port 5000.
+export const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (window.location.port === '5173' ? 'http://localhost:5000/api' : '/api')
 
 function getToken() {
   return localStorage.getItem('token')
@@ -122,6 +126,30 @@ export const api = {
     request(`/patients/${patientId}/investigations/${invId}`, { method: 'DELETE' }),
   getInvestigationFile: (patientId, invId) =>
     requestBlob(`/patients/${patientId}/investigations/${invId}/file`),
+
+  // drug photos
+  medicineImageUrl: (m) => `${API_URL}/medicines/${m.id}/image?v=${m.image_version || ''}`,
+  uploadMedicineImage: (id, blob) => {
+    const form = new FormData()
+    form.append('file', blob, 'photo.jpg')
+    return request(`/medicines/${id}/image`, { method: 'POST', body: form })
+  },
+  deleteMedicineImage: (id) => request(`/medicines/${id}/image`, { method: 'DELETE' }),
+
+  // desktop app
+  systemStatus: () => request('/system/status'),
+  setupOwner: (data) => request('/system/setup', json('POST', data)),
+  importCloud: (data) => request('/system/import-cloud', json('POST', data)),
+  systemInfo: () => request('/system/info'),
+  createBackup: () => request('/system/backups', { method: 'POST' }),
+  downloadBackup: (name) => requestBlob(`/system/backups/${encodeURIComponent(name)}`),
+  setBackupFolder: (path) => request('/system/backup-folder', json('PUT', { path })),
+  restoreBackup: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/system/restore', { method: 'POST', body: form })
+  },
+  openFolder: (which) => request('/system/open-folder', json('POST', { which })),
 
   // dashboard & reports
   getDashboard: () => request('/dashboard'),
