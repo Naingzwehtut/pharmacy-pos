@@ -1,10 +1,15 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
-import { useAuth } from '../context/AuthContext'
 import PatientForm from '../components/PatientForm'
 import PatientInvestigations from '../components/PatientInvestigations'
 import ReceiptModal from '../components/ReceiptModal'
+import { Alert, Empty, PaymentBadge, Stat } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../context/SettingsContext'
+import { formatDate, formatDateTime, formatNumber } from '../format'
+import { useT } from '../i18n'
+import { ReceivePayment, Statement } from './Credit'
 
 function Field({ label, children }) {
   return (
@@ -18,13 +23,17 @@ function Field({ label, children }) {
 export default function PatientDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { can } = useAuth()
+  const { t } = useT()
+  const { money } = useSettings()
   const [patient, setPatient] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [receiptSale, setReceiptSale] = useState(null)
+  const [paying, setPaying] = useState(false)
+  const [statement, setStatement] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -42,7 +51,7 @@ export default function PatientDetail() {
   }, [load])
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete patient "${patient.name}"?`)) return
+    if (!window.confirm(`${t('common.delete')} "${patient.name}"?`)) return
     try {
       await api.deletePatient(patient.id)
       navigate('/patients')
@@ -51,164 +60,124 @@ export default function PatientDetail() {
     }
   }
 
-  if (loading) return <div className="loading">Loading patient...</div>
-  if (!patient) return <div className="alert alert-error">{error || 'Patient not found'}</div>
+  if (loading) return <div className="loading">{t('common.loading')}</div>
+  if (!patient) return <Alert>{error || 'Patient not found'}</Alert>
 
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">
-          <Link to="/patients" className="text-muted">Patients</Link> / {patient.name}
+          <Link to="/patients" className="text-muted">{t('nav.patients')}</Link> / {patient.name}
         </h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" className="btn" onClick={() => setEditing(true)}>Edit</button>
-          {user?.role === 'admin' && patient.visit_count === 0 && (
-            <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>
+        <div className="header-actions">
+          <button type="button" className="btn" onClick={() => setEditing(true)}>{t('common.edit')}</button>
+          {can('admin') && patient.visits.length === 0 && (
+            <button type="button" className="btn btn-danger-ghost" onClick={handleDelete}>{t('common.delete')}</button>
           )}
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => navigate('/pos', { state: { patient } })}
-          >
-            New Visit
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/pos', { state: { patient } })}>
+            {t('pat.newVisit')}
           </button>
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
-
-      {patient.allergies && (
-        <div className="allergy-alert" style={{ marginBottom: 16 }}>
-          ⚠ Allergies: {patient.allergies}
-        </div>
-      )}
+      <Alert onClose={() => setError('')}>{error}</Alert>
+      {patient.allergies && <div className="allergy-alert big">⚠ {t('pos.allergies')}: {patient.allergies}</div>}
 
       <div className="card">
-        <div className="card-title">
-          {patient.patient_number}
-        </div>
+        <div className="card-title">{patient.patient_number}</div>
         <div className="detail-grid">
-          <Field label="Age">{patient.age != null ? `${patient.age} years` : null}</Field>
-          <Field label="Gender">{patient.gender}</Field>
-          <Field label="Date of birth">{patient.date_of_birth}</Field>
-          <Field label="Phone">{patient.phone}</Field>
-          <Field label="Address">{patient.address}</Field>
-          <Field label="Medical notes">{patient.medical_notes}</Field>
+          <Field label={t('pat.age')}>{patient.age != null ? `${patient.age}` : null}</Field>
+          <Field label={t('pat.gender')}>{patient.gender && t(`pat.${patient.gender.toLowerCase()}`)}</Field>
+          <Field label={t('pat.dob')}>{patient.date_of_birth && formatDate(patient.date_of_birth)}</Field>
+          <Field label={t('common.phone')}>{patient.phone}</Field>
+          <Field label={t('pat.nrc')}>{patient.nrc_number}</Field>
+          <Field label={t('common.address')}>{patient.address}</Field>
+          <Field label={t('pat.medicalNotes')}>{patient.medical_notes}</Field>
+          <Field label={t('credit.limit')}>{patient.credit_limit != null ? money(patient.credit_limit) : null}</Field>
         </div>
       </div>
 
-      <div className="summary-grid">
-        <div className="summary-box">
-          <div className="label">Visits</div>
-          <div className="value">{patient.visit_count}</div>
-        </div>
-        <div className="summary-box">
-          <div className="label">Doctor fees paid</div>
-          <div className="value">{patient.total_doctor_fees.toFixed(2)}</div>
-        </div>
-        <div className="summary-box">
-          <div className="label">Total spent</div>
-          <div className="value">{patient.total_spent.toFixed(2)}</div>
-        </div>
+      <div className="stat-grid">
+        <Stat label={t('pat.visits')} value={patient.visit_count} />
+        <Stat label={t('pat.doctorFeesPaid')} value={money(patient.total_doctor_fees)} />
+        <Stat label={t('pat.totalSpent')} value={money(patient.total_spent)} />
+        <Stat label={t('credit.balance')} value={money(patient.balance)} tone={patient.balance > 0 ? 'warning' : undefined}
+          sub={
+            <span className="stat-actions">
+              <button type="button" className="link-btn" onClick={() => setStatement(true)}>{t('credit.statement')}</button>
+              {patient.balance > 0 && <button type="button" className="link-btn" onClick={() => setPaying(true)}>{t('credit.receive')}</button>}
+            </span>
+          } />
       </div>
 
       <PatientInvestigations patientId={patient.id} visits={patient.visits} />
 
-      <div className="card">
-        <div className="card-title">Visit History</div>
-        {patient.visits.length === 0 ? (
-          <div className="empty-state">No visits yet</div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Doctor</th>
-                <th>Diagnosis</th>
-                <th>Medicines</th>
-                <th className="num">Doctor fee</th>
-                <th className="num">Total</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {patient.visits.map((v) => (
-                <Fragment key={v.id}>
-                  <tr>
-                    <td>{new Date(v.created_at).toLocaleString()}</td>
-                    <td>{v.doctor_name || '—'}</td>
-                    <td>{v.diagnosis || '—'}</td>
-                    <td>{v.items.length ? v.items.map((i) => i.medicine_name).join(', ') : '—'}</td>
-                    <td className="num">{v.doctor_fee.toFixed(2)}</td>
-                    <td className="num">{v.total_amount.toFixed(2)}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        style={{ marginRight: 4 }}
-                        onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}
-                      >
-                        {expandedId === v.id ? 'Hide' : 'Details'}
-                      </button>
-                      <button type="button" className="btn btn-sm" onClick={() => setReceiptSale(v)}>
-                        Receipt
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedId === v.id && (
-                    <tr>
-                      <td colSpan={7} style={{ background: '#fafafa' }}>
-                        <div className="detail-grid" style={{ marginBottom: 12 }}>
-                          <Field label="Symptoms">{v.symptoms}</Field>
-                          <Field label="Diagnosis">{v.diagnosis}</Field>
-                          <Field label="Notes">{v.visit_notes}</Field>
-                        </div>
-                        {v.items.length > 0 && (
-                          <table className="data-table">
-                            <thead>
-                              <tr>
-                                <th>Medicine</th>
-                                <th>Dosage / instructions</th>
-                                <th className="num">Qty</th>
-                                <th className="num">Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {v.items.map((i) => (
-                                <tr key={i.id}>
-                                  <td>{i.medicine_name}</td>
-                                  <td>{i.dosage || '—'}</td>
-                                  <td className="num">{i.quantity}</td>
-                                  <td className="num">{i.line_total.toFixed(2)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                        <div className="text-muted" style={{ marginTop: 8 }}>
-                          Receipt {v.sale_number} · served by {v.cashier_name}
-                        </div>
+      <div className="card card-flush">
+        <div className="card-title pad">{t('pat.visitHistory')}</div>
+        {patient.visits.length === 0 ? <Empty>{t('pat.noVisits')}</Empty> : (
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{t('common.date')}</th><th>{t('pos.doctor')}</th><th>{t('pos.diagnosis')}</th><th>{t('pos.medicines')}</th>
+                  <th>{t('sales.payment')}</th><th className="num">{t('common.total')}</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {patient.visits.map((v) => (
+                  <Fragment key={v.id}>
+                    <tr className={v.status === 'voided' ? 'row-voided' : ''}>
+                      <td>{formatDateTime(v.created_at)}</td>
+                      <td>{v.doctor_name || '—'}</td>
+                      <td>{v.diagnosis || '—'}</td>
+                      <td>{v.items.length ? v.items.map((i) => i.medicine_name).join(', ') : '—'}</td>
+                      <td><PaymentBadge method={v.payment_method} />{v.status === 'voided' && <span className="badge badge-danger badge-xs">{t('sales.voided')}</span>}</td>
+                      <td className="num">{money(v.total_amount)}</td>
+                      <td className="actions">
+                        <button type="button" className="btn btn-sm" onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}>
+                          {expandedId === v.id ? t('common.hide') : t('common.details')}
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setReceiptSale(v)}>{t('sales.receipt')}</button>
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
+                    {expandedId === v.id && (
+                      <tr className="detail-row">
+                        <td colSpan={7}>
+                          <div className="detail-grid">
+                            <Field label={t('pos.symptoms')}>{v.symptoms}</Field>
+                            <Field label={t('pos.diagnosis')}>{v.diagnosis}</Field>
+                            <Field label={t('common.notes')}>{v.visit_notes}</Field>
+                          </div>
+                          {v.items.length > 0 && (
+                            <table className="data-table inner">
+                              <thead><tr><th>{t('pos.item')}</th><th>{t('pat.dosage')}</th><th className="num">{t('common.quantity')}</th><th className="num">{t('common.amount')}</th></tr></thead>
+                              <tbody>
+                                {v.items.map((i) => (
+                                  <tr key={i.id}>
+                                    <td>{i.medicine_name}</td><td>{i.dosage || '—'}</td>
+                                    <td className="num">{i.unit_qty} {i.unit_size > 1 ? t(`unit.${i.unit_label}`) : ''}</td>
+                                    <td className="num">{formatNumber(i.line_total)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                          <div className="text-muted small">{v.sale_number} · {v.cashier_name}</div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {editing && (
-        <PatientForm
-          patient={patient}
-          onSaved={() => {
-            setEditing(false)
-            load()
-          }}
-          onClose={() => setEditing(false)}
-        />
-      )}
+      {editing && <PatientForm patient={patient} onSaved={() => { setEditing(false); load() }} onClose={() => setEditing(false)} />}
       {receiptSale && <ReceiptModal sale={receiptSale} onClose={() => setReceiptSale(null)} />}
+      {paying && <ReceivePayment account={patient} onClose={() => setPaying(false)} onDone={() => { setPaying(false); load() }} />}
+      {statement && <Statement patientId={patient.id} onClose={() => setStatement(false)} />}
     </div>
   )
 }

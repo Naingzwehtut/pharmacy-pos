@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { api } from '../api'
+import { formatNumber } from '../format'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES = [
@@ -16,7 +17,7 @@ function toKey(year, month, day) {
 }
 
 function currencyFmt(v) {
-  return `${Number(v || 0).toFixed(2)}`
+  return formatNumber(v)
 }
 
 export default function Calendar() {
@@ -201,7 +202,7 @@ export default function Calendar() {
           border-radius: 6px;
           border: 1px solid #dfe4e8;
           background: #fff;
-          color: #2980b9;
+          color: #0f766e;
           font-size: 16px;
           line-height: 1;
           cursor: pointer;
@@ -211,7 +212,7 @@ export default function Calendar() {
           transition: background 0.15s ease;
         }
         .cal-nav-btn:hover {
-          background: #eef4fa;
+          background: #ecf7f5;
         }
         .cal-today-btn {
           padding: 0 10px;
@@ -264,15 +265,15 @@ export default function Calendar() {
         }
         .cal-cell-has-data {
           cursor: pointer;
-          background: color-mix(in srgb, #2980b9 calc(var(--intensity) * 55%), #ffffff);
-          border-color: color-mix(in srgb, #2980b9 calc(var(--intensity) * 40% + 10%), #eceef0);
+          background: color-mix(in srgb, #0f766e calc(var(--intensity) * 55%), #ffffff);
+          border-color: color-mix(in srgb, #0f766e calc(var(--intensity) * 40% + 10%), #eceef0);
         }
         .cal-cell-has-data:hover {
-          border-color: #2980b9;
+          border-color: #0f766e;
           box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.15);
         }
         .cal-cell-today {
-          border-color: #2980b9;
+          border-color: #0f766e;
           border-width: 2px;
         }
         .cal-day-num {

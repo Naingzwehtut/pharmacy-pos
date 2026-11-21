@@ -19,6 +19,10 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false)
     }
+    // The API client fires this when the server rejects the token
+    const onExpired = () => setUser(null)
+    window.addEventListener('auth:expired', onExpired)
+    return () => window.removeEventListener('auth:expired', onExpired)
   }, [])
 
   const login = async (username, password) => {
@@ -33,8 +37,10 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const can = (...roles) => Boolean(user && roles.includes(user.role))
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, can }}>
       {children}
     </AuthContext.Provider>
   )

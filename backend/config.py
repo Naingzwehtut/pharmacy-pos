@@ -43,4 +43,6 @@ class Config:
     )
     ALLOW_LOCAL_UPLOADS = SQLALCHEMY_DATABASE_URI.startswith("sqlite")
     EXPIRY_WARNING_DAYS = int(os.environ.get("EXPIRY_WARNING_DAYS", "30"))
+    # Local business time. Myanmar (Asia/Yangon) is UTC+06:30 all year.
+    UTC_OFFSET_MINUTES = int(os.environ.get("UTC_OFFSET_MINUTES", "390"))
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
