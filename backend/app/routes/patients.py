@@ -8,8 +8,10 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload, selectinload
 
 from app import storage
-from app.models import Patient, PatientInvestigation, Sale, db
-from app.utils import admin_required
+from app.credit import balances
+from app.models import CreditPayment, Patient, PatientInvestigation, Sale, db
+from app.timeutil import local_today
+from app.utils import admin_required, to_number
 
 patients_bp = Blueprint("patients", __name__)
 
@@ -36,6 +38,13 @@ def _apply_fields(patient, data):
         patient.allergies = _clean(data["allergies"])
     if "medical_notes" in data:
         patient.medical_notes = _clean(data["medical_notes"])
+    if "nrc_number" in data:
+        patient.nrc_number = _clean(data["nrc_number"])
+    if "credit_limit" in data:
+        limit, err = to_number(data.get("credit_limit"), "Credit limit", allow_none=True)
+        if err:
+            return err
+        patient.credit_limit = limit
     if "date_of_birth" in data:
         raw = _clean(data["date_of_birth"])
         if raw is None:
@@ -45,7 +54,7 @@ def _apply_fields(patient, data):
                 dob = date.fromisoformat(raw)
             except ValueError:
                 return "Invalid date_of_birth format (YYYY-MM-DD)"
-            if dob > date.today():
+            if dob > local_today():
                 return "Date of birth cannot be in the future"
             patient.date_of_birth = dob
     return None
@@ -55,7 +64,8 @@ def _patient_with_stats(patient):
     d = patient.to_dict()
     visits = patient.visits
     d["visit_count"] = len(visits)
-    d["last_visit"] = visits[0].created_at.isoformat() if visits else None
+    d["last_visit"] = visits[0].to_dict()["created_at"] if visits else None
+    d["balance"] = balances([patient.id]).get(patient.id, {}).get("balance", 0.0)
     return d
 
 
@@ -73,6 +83,7 @@ def list_patients():
                 Patient.name.ilike(like),
                 Patient.phone.ilike(like),
                 Patient.patient_number.ilike(like),
+                Patient.nrc_number.ilike(like),
             )
         )
     patients = query.order_by(Patient.name).limit(limit).all()
@@ -83,18 +94,20 @@ def list_patients():
     if ids:
         rows = (
             db.session.query(Sale.patient_id, func.count(Sale.id), func.max(Sale.created_at))
-            .filter(Sale.patient_id.in_(ids))
+            .filter(Sale.patient_id.in_(ids), Sale.status != "voided")
             .group_by(Sale.patient_id)
             .all()
         )
         stats = {pid: (count, last) for pid, count, last in rows}
+    owed = balances(ids) if ids else {}
 
     result = []
     for p in patients:
         count, last = stats.get(p.id, (0, None))
         d = p.to_dict()
         d["visit_count"] = count
-        d["last_visit"] = last.isoformat() if last else None
+        d["last_visit"] = (last.isoformat() + "Z") if last else None
+        d["balance"] = owed.get(p.id, {}).get("balance", 0.0)
         result.append(d)
     return jsonify(result)
 
@@ -132,11 +145,13 @@ def get_patient(patient_id):
         .all()
     )
     result = patient.to_dict()
-    result["visit_count"] = len(visits)
-    result["last_visit"] = visits[0].created_at.isoformat() if visits else None
+    counted = [v for v in visits if v.status != "voided"]
+    result["visit_count"] = len(counted)
+    result["last_visit"] = counted[0].to_dict()["created_at"] if counted else None
     result["visits"] = [v.to_dict() for v in visits]
-    result["total_doctor_fees"] = sum(float(v.doctor_fee or 0) for v in visits)
-    result["total_spent"] = sum(float(v.total_amount) for v in visits)
+    result["total_doctor_fees"] = sum(float(v.doctor_fee or 0) for v in counted)
+    result["total_spent"] = sum(float(v.total_amount) for v in counted)
+    result.update(balances([patient.id]).get(patient.id, {"credit": 0.0, "paid": 0.0, "balance": 0.0}))
     return jsonify(result)
 
 
@@ -160,6 +175,8 @@ def delete_patient(patient_id):
         return jsonify(
             {"error": "Cannot delete a patient who has visit history."}
         ), 409
+    if CreditPayment.query.filter_by(patient_id=patient_id).first():
+        return jsonify({"error": "Cannot delete a customer who has credit payments."}), 409
     if PatientInvestigation.query.filter_by(patient_id=patient_id).first():
         return jsonify(
             {"error": "Delete this patient's investigation files first."}
@@ -208,8 +225,8 @@ def _apply_investigation_fields(inv, data, patient_id):
                 test_date = date.fromisoformat(raw)
             except ValueError:
                 return "Invalid test date format (YYYY-MM-DD)"
-            # +1 day: the server runs in UTC, the clinic may already be on 'tomorrow'
-            if test_date > date.today() + timedelta(days=1):
+            # +1 day of slack for a clock that is slightly off
+            if test_date > local_today() + timedelta(days=1):
                 return "Test date cannot be in the future"
             inv.test_date = test_date
     if "sale_id" in data:

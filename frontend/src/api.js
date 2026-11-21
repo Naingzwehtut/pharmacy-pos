@@ -1,7 +1,19 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Web: VITE_API_URL (e.g. the Render address). Desktop app: the same local server ('/api').
+// Vite dev server (port 5173) talks to the Flask dev server on port 5000.
+export const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (window.location.port === '5173' ? 'http://localhost:5000/api' : '/api')
 
 function getToken() {
   return localStorage.getItem('token')
+}
+
+function qs(params = {}) {
+  const clean = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  )
+  const s = new URLSearchParams(clean).toString()
+  return s ? `?${s}` : ''
 }
 
 async function request(path, options = {}) {
@@ -15,11 +27,21 @@ async function request(path, options = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  let res
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  } catch {
+    throw new Error('Cannot reach the server. Check the internet connection and try again.')
+  }
   const data = await res.json().catch(() => ({}))
 
+  if (res.status === 401 && token && !path.startsWith('/auth/login')) {
+    // Session expired or account deactivated: back to the login screen
+    localStorage.removeItem('token')
+    window.dispatchEvent(new Event('auth:expired'))
+  }
   if (!res.ok) {
-    throw new Error(data.error || `Request failed (${res.status})`)
+    throw new Error(data.error || data.msg || `Request failed (${res.status})`)
   }
   return data
 }
@@ -37,69 +59,101 @@ async function requestBlob(path) {
   return res.blob()
 }
 
+const json = (method, data) => ({ method, body: JSON.stringify(data) })
+
 export const api = {
-  login: (username, password) =>
-    request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    }),
+  // auth & users
+  login: (username, password) => request('/auth/login', json('POST', { username, password })),
   me: () => request('/auth/me'),
-  getMedicines: (params = {}) => {
-    const qs = new URLSearchParams(params).toString()
-    return request(`/medicines${qs ? `?${qs}` : ''}`)
-  },
+  changePassword: (current_password, new_password) =>
+    request('/auth/change-password', json('POST', { current_password, new_password })),
+  getUsers: () => request('/users'),
+  createUser: (data) => request('/users', json('POST', data)),
+  updateUser: (id, data) => request(`/users/${id}`, json('PUT', data)),
+
+  // medicines
+  getMedicines: (params = {}) => request(`/medicines${qs(params)}`),
+  getMedicine: (id) => request(`/medicines/${id}`),
+  findBarcode: (code) => request(`/medicines/barcode/${encodeURIComponent(code)}`),
   getCategories: () => request('/medicines/categories'),
-  createMedicine: (data) =>
-    request('/medicines', { method: 'POST', body: JSON.stringify(data) }),
-  updateMedicine: (id, data) =>
-    request(`/medicines/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteMedicine: (id) =>
-    request(`/medicines/${id}`, { method: 'DELETE' }),
-  checkout: (payload) =>
-    request('/sales/checkout', { method: 'POST', body: JSON.stringify(payload) }),
-  getDeliveryFee: () => request('/settings/delivery-fee'),
-  updateDeliveryFee: (delivery_fee) =>
-    request('/settings/delivery-fee', {
-      method: 'PUT',
-      body: JSON.stringify({ delivery_fee }),
-    }),
-  getReceiptSettings: () => request('/settings/receipt'),
-  updateReceiptSettings: (data) =>
-    request('/settings/receipt', { method: 'PUT', body: JSON.stringify(data) }),
-  getSales: (params = {}) => {
-    const qs = new URLSearchParams(params).toString()
-    return request(`/sales${qs ? `?${qs}` : ''}`)
-  },
+  createMedicine: (data) => request('/medicines', json('POST', data)),
+  updateMedicine: (id, data) => request(`/medicines/${id}`, json('PUT', data)),
+  deleteMedicine: (id) => request(`/medicines/${id}`, { method: 'DELETE' }),
+  updateBatch: (medicineId, batchId, data) =>
+    request(`/medicines/${medicineId}/batches/${batchId}`, json('PUT', data)),
+  adjustStock: (id, data) => request(`/medicines/${id}/adjust`, json('POST', data)),
+  getMovements: (params = {}) => request(`/medicines/movements${qs(params)}`),
+
+  // suppliers & purchases
+  getSuppliers: (params = {}) => request(`/suppliers${qs(params)}`),
+  createSupplier: (data) => request('/suppliers', json('POST', data)),
+  updateSupplier: (id, data) => request(`/suppliers/${id}`, json('PUT', data)),
+  deleteSupplier: (id) => request(`/suppliers/${id}`, { method: 'DELETE' }),
+  getPurchases: (params = {}) => request(`/purchases${qs(params)}`),
+  createPurchase: (data) => request('/purchases', json('POST', data)),
+
+  // sales
+  checkout: (payload) => request('/sales/checkout', json('POST', payload)),
+  getSales: (params = {}) => request(`/sales${qs(params)}`),
   getSale: (id) => request(`/sales/${id}`),
-  getDoctorFee: () => request('/settings/doctor-fee'),
-  updateDoctorFee: (doctor_fee) =>
-    request('/settings/doctor-fee', {
-      method: 'PUT',
-      body: JSON.stringify({ doctor_fee }),
-    }),
-  getPatients: (params = {}) => {
-    const qs = new URLSearchParams(params).toString()
-    return request(`/patients${qs ? `?${qs}` : ''}`)
-  },
+  voidSale: (id, reason) => request(`/sales/${id}/void`, json('POST', { reason })),
+  exportSales: async (params = {}) => requestBlob(`/sales/export.csv${qs(params)}`),
+
+  // credit
+  getCreditAccounts: () => request('/credit/accounts'),
+  getCreditStatement: (patientId) => request(`/credit/accounts/${patientId}`),
+  receiveCreditPayment: (patientId, data) =>
+    request(`/credit/accounts/${patientId}/payments`, json('POST', data)),
+  deleteCreditPayment: (id) => request(`/credit/payments/${id}`, { method: 'DELETE' }),
+
+  // settings
+  getSettings: () => request('/settings'),
+  updateSettings: (data) => request('/settings', json('PUT', data)),
+  getReceiptSettings: () => request('/settings/receipt'),
+
+  // patients
+  getPatients: (params = {}) => request(`/patients${qs(params)}`),
   getPatient: (id) => request(`/patients/${id}`),
-  createPatient: (data) =>
-    request('/patients', { method: 'POST', body: JSON.stringify(data) }),
-  updatePatient: (id, data) =>
-    request(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  createPatient: (data) => request('/patients', json('POST', data)),
+  updatePatient: (id, data) => request(`/patients/${id}`, json('PUT', data)),
   deletePatient: (id) => request(`/patients/${id}`, { method: 'DELETE' }),
   getInvestigations: (patientId) => request(`/patients/${patientId}/investigations`),
   uploadInvestigation: (patientId, formData) =>
     request(`/patients/${patientId}/investigations`, { method: 'POST', body: formData }),
   updateInvestigation: (patientId, invId, data) =>
-    request(`/patients/${patientId}/investigations/${invId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
+    request(`/patients/${patientId}/investigations/${invId}`, json('PUT', data)),
   deleteInvestigation: (patientId, invId) =>
     request(`/patients/${patientId}/investigations/${invId}`, { method: 'DELETE' }),
   getInvestigationFile: (patientId, invId) =>
     requestBlob(`/patients/${patientId}/investigations/${invId}/file`),
+
+  // drug photos
+  medicineImageUrl: (m) => `${API_URL}/medicines/${m.id}/image?v=${m.image_version || ''}`,
+  uploadMedicineImage: (id, blob) => {
+    const form = new FormData()
+    form.append('file', blob, 'photo.jpg')
+    return request(`/medicines/${id}/image`, { method: 'POST', body: form })
+  },
+  deleteMedicineImage: (id) => request(`/medicines/${id}/image`, { method: 'DELETE' }),
+
+  // desktop app
+  systemStatus: () => request('/system/status'),
+  setupOwner: (data) => request('/system/setup', json('POST', data)),
+  importCloud: (data) => request('/system/import-cloud', json('POST', data)),
+  systemInfo: () => request('/system/info'),
+  createBackup: () => request('/system/backups', { method: 'POST' }),
+  downloadBackup: (name) => requestBlob(`/system/backups/${encodeURIComponent(name)}`),
+  setBackupFolder: (path) => request('/system/backup-folder', json('PUT', { path })),
+  restoreBackup: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/system/restore', { method: 'POST', body: form })
+  },
+  openFolder: (which) => request('/system/open-folder', json('POST', { which })),
+
+  // dashboard & reports
   getDashboard: () => request('/dashboard'),
-  getCalendarStats: (year, month) =>
-    request(`/dashboard/calendar?year=${year}&month=${month}`),
+  getCalendarStats: (year, month) => request(`/dashboard/calendar?year=${year}&month=${month}`),
+  getDailyReport: (params = {}) => request(`/reports/daily${qs(params)}`),
+  getExpiryReport: (days = 90) => request(`/reports/expiry?days=${days}`),
 }
