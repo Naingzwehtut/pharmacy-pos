@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.credit import balances
 from app.models import Medicine, MedicineBatch, Patient, Sale, SaleItem, db
@@ -108,8 +108,9 @@ def dashboard():
     )
     expired = batch_rows(MedicineBatch.expiry_date < today, order=MedicineBatch.expiry_date.desc())
 
+    # Load items, cashier and patient together instead of 3 queries per sale
     recent_sales = (
-        Sale.query.options(selectinload(Sale.items))
+        Sale.query.options(selectinload(Sale.items), joinedload(Sale.cashier), joinedload(Sale.patient))
         .order_by(Sale.created_at.desc()).limit(10).all()
     )
 

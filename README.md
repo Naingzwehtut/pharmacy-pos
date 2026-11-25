@@ -334,6 +334,7 @@ pharmacy-pos/
 │   │   └── routes/          # auth, users, medicines, purchases, sales, credit,
 │   │                        # reports, dashboard, settings, patients
 │   ├── tests/               # pytest suite
+│   ├── gunicorn.conf.py     # workers/threads, loaded automatically by gunicorn
 │   ├── seed.py              # sample data (--demo for sales)
 │   └── upgrade_db.py        # create / upgrade tables, v1 → v2
 └── frontend/

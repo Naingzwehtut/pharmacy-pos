@@ -130,7 +130,15 @@ def export_sales():
 @sales_bp.route("/<int:sale_id>", methods=["GET"])
 @jwt_required()
 def get_sale(sale_id):
-    sale = Sale.query.get_or_404(sale_id)
+    sale = (
+        Sale.query.options(
+            selectinload(Sale.items),
+            joinedload(Sale.cashier),
+            joinedload(Sale.patient),
+        )
+        .filter_by(id=sale_id)
+        .first_or_404()
+    )
     return jsonify(_public(sale.to_dict()))
 
 

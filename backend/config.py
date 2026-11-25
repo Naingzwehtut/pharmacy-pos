@@ -28,6 +28,19 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    if not SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            # Check a pooled connection before using it. Supabase's pooler closes
+            # idle connections, which otherwise causes a slow failed request
+            # after the app has been quiet for a while.
+            "pool_pre_ping": True,
+            "pool_recycle": 300,
+            # Per gunicorn worker. 2 workers x (4 + 2) = 12 connections at most,
+            # under the Supabase session pooler limit on the smallest plans (15).
+            "pool_size": int(os.environ.get("DB_POOL_SIZE", "4")),
+            "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "2")),
+        }
+
     # Investigation files (blood reports, X-rays...) go to a PRIVATE Supabase
     # Storage bucket. Use the service-role / secret key; never expose it to the frontend.
     SUPABASE_URL = os.environ.get("SUPABASE_URL")
