@@ -1,14 +1,42 @@
-from datetime import date, datetime, timedelta
+from calendar import monthrange
+from datetime import date, timedelta
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models import Medicine, Patient, Sale, SaleItem, db
+from app.credit import balances
+from app.models import Medicine, MedicineBatch, Patient, Sale, SaleItem, db
+from app.timeutil import local_date_expr, local_day_bounds, local_today
 from app.utils import admin_required
 
 dashboard_bp = Blueprint("dashboard", __name__)
+
+
+def _completed():
+    return Sale.status != "voided"
+
+
+def _totals(start=None, end=None):
+    q = db.session.query(
+        func.count(Sale.id),
+        func.coalesce(func.sum(Sale.total_amount), 0),
+        func.coalesce(func.sum(Sale.total_profit), 0),
+        func.coalesce(func.sum(Sale.doctor_fee), 0),
+        func.coalesce(func.sum(Sale.discount), 0),
+    ).filter(_completed())
+    if start:
+        lo, hi = local_day_bounds(start, end)
+        q = q.filter(Sale.created_at >= lo, Sale.created_at < hi)
+    count, revenue, profit, doctor_fees, discount = q.one()
+    return {
+        "sales": int(count or 0),
+        "revenue": float(revenue),
+        "profit": float(profit),
+        "doctor_fees": float(doctor_fees),
+        "discount": float(discount),
+    }
 
 
 @dashboard_bp.route("", methods=["GET"])
@@ -16,128 +44,145 @@ dashboard_bp = Blueprint("dashboard", __name__)
 @admin_required()
 def dashboard():
     warning_days = current_app.config["EXPIRY_WARNING_DAYS"]
-    today = date.today()
+    today = local_today()
+    month_start = today.replace(day=1)
     warning_cutoff = today + timedelta(days=warning_days)
 
-    # All summary totals in ONE database round trip (each round trip to a
-    # remote database costs tens of milliseconds or more).
-    totals = db.session.execute(
-        select(
-            select(func.count(Sale.id)).scalar_subquery().label("total_sales"),
-            select(func.coalesce(func.sum(Sale.total_amount), 0))
-            .scalar_subquery()
-            .label("total_revenue"),
-            select(func.coalesce(func.sum(Sale.total_profit), 0))
-            .scalar_subquery()
-            .label("total_profit"),
-            select(func.coalesce(func.sum(Sale.doctor_fee), 0))
-            .scalar_subquery()
-            .label("total_doctor_fees"),
-            select(
-                func.coalesce(func.sum(Medicine.cost_price * Medicine.stock_quantity), 0)
-            )
-            .scalar_subquery()
-            .label("total_expenses"),
-            select(func.count(Medicine.id)).scalar_subquery().label("total_products"),
-            select(func.count(Patient.id)).scalar_subquery().label("total_patients"),
-        )
-    ).one()
+    all_time = _totals()
+    today_totals = _totals(today)
+    yesterday_totals = _totals(today - timedelta(days=1))
+    month_totals = _totals(month_start, today)
 
+    stock_value = float(
+        db.session.query(func.coalesce(func.sum(MedicineBatch.quantity * MedicineBatch.cost_price), 0))
+        .filter(MedicineBatch.quantity > 0, MedicineBatch.expiry_date >= today)
+        .scalar()
+    )
+    expired_value = float(
+        db.session.query(func.coalesce(func.sum(MedicineBatch.quantity * MedicineBatch.cost_price), 0))
+        .filter(MedicineBatch.quantity > 0, MedicineBatch.expiry_date < today)
+        .scalar()
+    )
+    total_products = db.session.query(func.count(Medicine.id)).filter(Medicine.is_active.isnot(False)).scalar() or 0
+    total_patients = db.session.query(func.count(Patient.id)).scalar() or 0
+    outstanding_credit = round(sum(v["balance"] for v in balances().values() if v["balance"] > 0), 2)
+
+    since = today - timedelta(days=29)
+    lo, hi = local_day_bounds(since, today)
     best_selling = (
         db.session.query(
             SaleItem.medicine_name,
             func.sum(SaleItem.quantity).label("total_qty"),
             func.sum(SaleItem.line_total).label("revenue"),
+            func.sum(SaleItem.line_profit).label("profit"),
         )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .filter(_completed(), Sale.created_at >= lo, Sale.created_at < hi)
         .group_by(SaleItem.medicine_name)
-        .order_by(func.sum(SaleItem.quantity).desc())
+        .order_by(func.sum(SaleItem.line_total).desc())
         .limit(10)
         .all()
     )
 
     low_stock = (
-        Medicine.query.filter(Medicine.stock_quantity <= 10)
+        Medicine.query.options(selectinload(Medicine.batches))
+        .filter(Medicine.is_active.isnot(False), Medicine.stock_quantity <= Medicine.reorder_level)
         .order_by(Medicine.stock_quantity)
-        .limit(20)
+        .limit(30)
         .all()
     )
 
-    expiring_soon = (
-        Medicine.query.filter(
-            Medicine.expiry_date >= today,
-            Medicine.expiry_date <= warning_cutoff,
+    def batch_rows(*conditions, order):
+        rows = (
+            MedicineBatch.query.join(Medicine)
+            .filter(MedicineBatch.quantity > 0, *conditions)
+            .order_by(order)
+            .limit(30)
+            .all()
         )
-        .order_by(Medicine.expiry_date)
-        .limit(20)
-        .all()
-    )
+        return [b.to_dict(warning_days) for b in rows]
 
-    expired = (
-        Medicine.query.filter(Medicine.expiry_date < today)
-        .order_by(Medicine.expiry_date.desc())
-        .limit(20)
-        .all()
+    expiring_soon = batch_rows(
+        MedicineBatch.expiry_date >= today, MedicineBatch.expiry_date <= warning_cutoff,
+        order=MedicineBatch.expiry_date,
     )
+    expired = batch_rows(MedicineBatch.expiry_date < today, order=MedicineBatch.expiry_date.desc())
 
     # Load items, cashier and patient together instead of 3 queries per sale
     recent_sales = (
-        Sale.query.options(
-            selectinload(Sale.items),
-            joinedload(Sale.cashier),
-            joinedload(Sale.patient),
-        )
-        .order_by(Sale.created_at.desc())
-        .limit(10)
-        .all()
+        Sale.query.options(selectinload(Sale.items), joinedload(Sale.cashier), joinedload(Sale.patient))
+        .order_by(Sale.created_at.desc()).limit(10).all()
     )
 
-    sales_by_day = (
+    start14 = today - timedelta(days=13)
+    lo, hi = local_day_bounds(start14, today)
+    day = local_date_expr(Sale.created_at)
+    rows = (
         db.session.query(
-            func.date(Sale.created_at).label("day"),
-            func.count(Sale.id).label("count"),
-            func.sum(Sale.total_amount).label("revenue"),
-            func.sum(Sale.total_profit).label("profit"),
+            day.label("day"),
+            func.count(Sale.id),
+            func.sum(Sale.total_amount),
+            func.sum(Sale.total_profit),
         )
-        .group_by(func.date(Sale.created_at))
-        .order_by(func.date(Sale.created_at).desc())
-        .limit(14)
+        .filter(_completed(), Sale.created_at >= lo, Sale.created_at < hi)
+        .group_by(day)
+        .all()
+    )
+    by_day = {str(r[0]): r for r in rows}
+    sales_by_day = []
+    for i in range(14):
+        d = (start14 + timedelta(days=i)).isoformat()
+        r = by_day.get(d)
+        sales_by_day.append({
+            "date": d,
+            "count": int(r[1]) if r else 0,
+            "revenue": float(r[2] or 0) if r else 0.0,
+            "profit": float(r[3] or 0) if r else 0.0,
+        })
+
+    method_rows = (
+        db.session.query(Sale.payment_method, func.count(Sale.id), func.coalesce(func.sum(Sale.total_amount), 0))
+        .filter(_completed(), Sale.created_at >= local_day_bounds(month_start, today)[0])
+        .group_by(Sale.payment_method)
         .all()
     )
 
-    return jsonify(
-        {
-            "summary": {
-                "total_sales": totals.total_sales or 0,
-                "total_revenue": float(totals.total_revenue),
-                "total_profit": float(totals.total_profit),
-                "total_expenses": float(totals.total_expenses),
-                "total_products": totals.total_products or 0,
-                "total_patients": totals.total_patients or 0,
-                "total_doctor_fees": float(totals.total_doctor_fees),
-            },
-            "best_selling": [
-                {
-                    "name": row.medicine_name,
-                    "quantity_sold": int(row.total_qty),
-                    "revenue": float(row.revenue),
-                }
-                for row in best_selling
-            ],
-            "low_stock": [m.to_dict(warning_days) for m in low_stock],
-            "expiring_soon": [m.to_dict(warning_days) for m in expiring_soon],
-            "expired": [m.to_dict(warning_days) for m in expired],
-            "recent_sales": [s.to_dict() for s in recent_sales],
-            "sales_by_day": [
-                {
-                    "date": str(row.day),
-                    "count": row.count,
-                    "revenue": float(row.revenue or 0),
-                    "profit": float(row.profit or 0),
-                }
-                for row in reversed(sales_by_day)
-            ],
-        }
-    )
+    return jsonify({
+        "summary": {
+            # v1 keys (kept for compatibility)
+            "total_sales": all_time["sales"],
+            "total_revenue": all_time["revenue"],
+            "total_profit": all_time["profit"],
+            "total_expenses": stock_value,
+            "total_products": total_products,
+            "total_patients": total_patients,
+            "total_doctor_fees": all_time["doctor_fees"],
+            # v2
+            "stock_value": stock_value,
+            "expired_stock_value": expired_value,
+            "outstanding_credit": outstanding_credit,
+        },
+        "today": today_totals,
+        "yesterday": yesterday_totals,
+        "this_month": month_totals,
+        "payment_methods_this_month": [
+            {"method": m or "cash", "count": int(c), "amount": float(a)} for m, c, a in method_rows
+        ],
+        "best_selling": [
+            {
+                "name": r.medicine_name,
+                "quantity_sold": int(r.total_qty or 0),
+                "revenue": float(r.revenue or 0),
+                "profit": float(r.profit or 0),
+            }
+            for r in best_selling
+        ],
+        "low_stock": [m.to_dict(warning_days) for m in low_stock],
+        "expiring_soon": expiring_soon,
+        "expired": expired,
+        "recent_sales": [s.to_dict() for s in recent_sales],
+        "sales_by_day": sales_by_day,
+    })
 
 
 @dashboard_bp.route("/calendar", methods=["GET"])
@@ -146,48 +191,35 @@ def dashboard():
 def dashboard_calendar():
     year = request.args.get("year", type=int)
     month = request.args.get("month", type=int)
-
     if not year or not month or month < 1 or month > 12:
         return jsonify({"error": "year and month query params are required"}), 400
 
-    # Compare created_at to a plain range (not DATE(created_at)) so the
-    # database can use the index on sales.created_at instead of scanning
-    # every sale ever made.
-    start = datetime(year, month, 1)
-    end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, monthrange(year, month)[1])
+    lo, hi = local_day_bounds(start_date, end_date)
+    day = local_date_expr(Sale.created_at)
 
     revenue_rows = (
-        db.session.query(
-            func.date(Sale.created_at).label("day"),
-            func.sum(Sale.total_amount).label("revenue"),
-            func.sum(Sale.total_profit).label("profit"),
-        )
-        .filter(Sale.created_at >= start, Sale.created_at < end)
-        .group_by(func.date(Sale.created_at))
+        db.session.query(day.label("day"), func.sum(Sale.total_amount), func.sum(Sale.total_profit), func.count(Sale.id))
+        .filter(_completed(), Sale.created_at >= lo, Sale.created_at < hi)
+        .group_by(day)
         .all()
     )
-
-    # Summed separately (joined to sale_items) so sales with multiple line
-    # items don't get their revenue/profit multiplied in the query above.
+    # Summed separately so sales with several lines don't multiply revenue
     items_rows = (
-        db.session.query(
-            func.date(Sale.created_at).label("day"),
-            func.count(SaleItem.id).label("items_sold"),
-        )
+        db.session.query(day.label("day"), func.count(SaleItem.id))
         .join(SaleItem, SaleItem.sale_id == Sale.id)
-        .filter(Sale.created_at >= start, Sale.created_at < end)
-        .group_by(func.date(Sale.created_at))
+        .filter(_completed(), Sale.created_at >= lo, Sale.created_at < hi)
+        .group_by(day)
         .all()
     )
-    items_by_day = {str(row.day): int(row.items_sold or 0) for row in items_rows}
-
-    return jsonify(
-        {
-            str(row.day): {
-                "total_items_sold": items_by_day.get(str(row.day), 0),
-                "total_revenue": float(row.revenue or 0),
-                "total_profit": float(row.profit or 0),
-            }
-            for row in revenue_rows
+    items_by_day = {str(r[0]): int(r[1] or 0) for r in items_rows}
+    return jsonify({
+        str(r[0]): {
+            "total_items_sold": items_by_day.get(str(r[0]), 0),
+            "total_revenue": float(r[1] or 0),
+            "total_profit": float(r[2] or 0),
+            "total_sales": int(r[3] or 0),
         }
-    )
+        for r in revenue_rows
+    })

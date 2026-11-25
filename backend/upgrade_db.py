@@ -1,10 +1,13 @@
-"""Upgrade an existing database to the clinic version.
+"""Upgrade an existing database (v1 or clinic version) to v2.
 
-Safe to run any number of times. It:
-  * creates the new `patients` and `patient_investigations` tables
-  * adds the new clinic columns to `sales` and `sale_items` if they are missing
+Safe to run any number of times. It never deletes data. It:
+  * creates the new tables (batches, suppliers, purchases, stock movements,
+    credit payments...)
+  * adds the new columns to existing tables
+  * turns each medicine's current stock into an "opening" batch, so stock
+    and expiry tracking carry on exactly as before
 
-Your existing medicines, sales and users are NOT touched.
+Back up your database first (Supabase: Database -> Backups).
 
 Usage:  python upgrade_db.py
 """
@@ -13,41 +16,15 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from sqlalchemy import inspect, text
-
 from app import create_app
-from app.models import db
-
-NEW_COLUMNS = {
-    "sales": [
-        ("patient_id", "INTEGER REFERENCES patients(id)"),
-        ("doctor_name", "VARCHAR(200)"),
-        ("doctor_fee", "NUMERIC(10, 2) NOT NULL DEFAULT 0"),
-        ("symptoms", "TEXT"),
-        ("diagnosis", "TEXT"),
-        ("visit_notes", "TEXT"),
-    ],
-    "sale_items": [
-        ("dosage", "VARCHAR(300)"),
-    ],
-}
+from app.migrations import upgrade_database
 
 
 def upgrade():
     app = create_app()
     with app.app_context():
-        db.create_all()  # creates `patients`, `patient_investigations` and any other missing table
-
-        inspector = inspect(db.engine)
-        for table, columns in NEW_COLUMNS.items():
-            existing = {c["name"] for c in inspector.get_columns(table)}
-            for name, ddl in columns:
-                if name in existing:
-                    continue
-                db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
-                print(f"  added {table}.{name}")
-        db.session.commit()
-        print("Database is up to date.")
+        upgrade_database()
+        print("Database is up to date (v2).")
 
 
 if __name__ == "__main__":

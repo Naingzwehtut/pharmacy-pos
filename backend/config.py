@@ -56,4 +56,15 @@ class Config:
     )
     ALLOW_LOCAL_UPLOADS = SQLALCHEMY_DATABASE_URI.startswith("sqlite")
     EXPIRY_WARNING_DAYS = int(os.environ.get("EXPIRY_WARNING_DAYS", "30"))
+    # Local business time. Myanmar (Asia/Yangon) is UTC+06:30 all year.
+    UTC_OFFSET_MINUTES = int(os.environ.get("UTC_OFFSET_MINUTES", "390"))
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
+
+    # ---- Desktop app (set by desktop/launcher.py) ----
+    # DESKTOP turns on the first-run setup screen, backups and the cloud import.
+    DESKTOP = os.environ.get("ZWE_DESKTOP") == "1"
+    DATA_DIR = os.environ.get("ZWE_DATA_DIR")
+    BACKUP_DIR = os.path.join(DATA_DIR, "backups") if DATA_DIR else None
+    # When set, Flask also serves the built React app (frontend/dist)
+    FRONTEND_DIST = os.environ.get("ZWE_FRONTEND_DIST")
+    APP_VERSION = "2.1.0"

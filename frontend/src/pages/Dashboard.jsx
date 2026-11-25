@@ -1,313 +1,127 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend,
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { api } from '../api'
+import { Alert, Empty, ExpiryBadge, Stat } from '../components/ui'
+import { useSettings } from '../context/SettingsContext'
+import { describeQuantity, formatDate, formatNumber } from '../format'
+import { useTheme } from '../context/ThemeContext'
+import { useT } from '../i18n'
 import Calendar from './Calendar'
 
+function change(now, before) {
+  if (!before) return null
+  const pct = ((now - before) / before) * 100
+  return `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`
+}
+
+const compact = (v) => (Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${Math.round(v / 1e3)}K` : String(v))
+
 export default function Dashboard() {
+  const { t } = useT()
+  const { money } = useSettings()
+  const { theme } = useTheme()
+  const c = theme === 'dark'
+    ? { main: '#5fbf88', second: '#e0a43a', text: '#b9bdb8', grid: '#2c302d', tip: '#1c1f1d' }
+    : { main: '#1f6b43', second: '#a15c07', text: '#4a514d', grid: '#e3e4df', tip: '#ffffff' }
   const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [deliveryFee, setDeliveryFee] = useState('')
-  const [savingFee, setSavingFee] = useState(false)
-  const [feeMessage, setFeeMessage] = useState('')
-  const [doctorFee, setDoctorFee] = useState('')
-  const [savingDoctorFee, setSavingDoctorFee] = useState(false)
-  const [doctorFeeMessage, setDoctorFeeMessage] = useState('')
-  const [pharmacyForm, setPharmacyForm] = useState({
-    pharmacy_name: '',
-    pharmacy_address: '',
-    pharmacy_phone: '',
-  })
-  const [savingPharmacy, setSavingPharmacy] = useState(false)
-  const [pharmacyMessage, setPharmacyMessage] = useState('')
 
   useEffect(() => {
-    Promise.all([api.getDashboard(), api.getDeliveryFee(), api.getReceiptSettings(), api.getDoctorFee()])
-      .then(([dashboardData, feeData, receiptData, doctorFeeData]) => {
-        setData(dashboardData)
-        setDeliveryFee(String(feeData.delivery_fee))
-        setDoctorFee(String(doctorFeeData.doctor_fee))
-        setPharmacyForm(receiptData)
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
+    api.getDashboard().then(setData).catch((err) => setError(err.message))
   }, [])
 
-  const saveDeliveryFee = async (e) => {
-    e.preventDefault()
-    setSavingFee(true)
-    setFeeMessage('')
-    try {
-      const result = await api.updateDeliveryFee(parseFloat(deliveryFee))
-      setDeliveryFee(String(result.delivery_fee))
-      setFeeMessage('Default delivery fee saved.')
-    } catch (err) {
-      setFeeMessage(err.message)
-    } finally {
-      setSavingFee(false)
-    }
-  }
+  if (error) return <Alert>{error}</Alert>
+  if (!data) return <div className="loading">{t('common.loading')}</div>
 
-  const saveDoctorFee = async (e) => {
-    e.preventDefault()
-    setSavingDoctorFee(true)
-    setDoctorFeeMessage('')
-    try {
-      const result = await api.updateDoctorFee(parseFloat(doctorFee))
-      setDoctorFee(String(result.doctor_fee))
-      setDoctorFeeMessage('Default doctor fee saved.')
-    } catch (err) {
-      setDoctorFeeMessage(err.message)
-    } finally {
-      setSavingDoctorFee(false)
-    }
-  }
-
-  const savePharmacySettings = async (e) => {
-    e.preventDefault()
-    setSavingPharmacy(true)
-    setPharmacyMessage('')
-    try {
-      const result = await api.updateReceiptSettings(pharmacyForm)
-      setPharmacyForm(result)
-      setPharmacyMessage('Receipt details saved.')
-    } catch (err) {
-      setPharmacyMessage(err.message)
-    } finally {
-      setSavingPharmacy(false)
-    }
-  }
-
-  if (loading) return <div className="loading">Loading dashboard...</div>
-  if (error) return <div className="alert alert-error">{error}</div>
-  if (!data) return null
-
-  const { summary, best_selling, low_stock, expiring_soon, expired, sales_by_day } = data
+  const { today, yesterday, this_month: month, summary } = data
+  const chartData = data.sales_by_day.map((d) => ({ ...d, label: d.date.slice(5) }))
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
-      </div>
+      <div className="page-header"><h1 className="page-title">{t('dash.title')}</h1></div>
 
-      <div className="summary-grid">
-        <div className="summary-box">
-          <div className="label">Total Sales</div>
-          <div className="value">{summary.total_sales}</div>
-        </div>
-        <div className="summary-box">
-          <div className="label">Total Revenue</div>
-          <div className="value">{summary.total_revenue.toFixed(2)}</div>
-        </div>
-        <div className="summary-box">
-          <div className="label">Total Profit</div>
-          <div className="value">{summary.total_profit.toFixed(2)}</div>
-        </div>
-        
-         <div className="summary-box">
-    <div className="label">Total Expenses</div>
-    <div className="value">{summary.total_expenses.toFixed(2)}</div>
-  </div>
-  <div className="summary-box">
-    <div className="label">Total Products</div>
-    <div className="value">{summary.total_products}</div>
-  </div>
-  <div className="summary-box">
-    <div className="label">Patients</div>
-    <div className="value">{summary.total_patients}</div>
-  </div>
-  <div className="summary-box">
-    <div className="label">Doctor Fees Collected</div>
-    <div className="value">{summary.total_doctor_fees.toFixed(2)}</div>
-  </div>
-        
-      </div>
-
-      <div className="card mb-16">
-        <div className="card-title">Receipt Details</div>
-        <form onSubmit={savePharmacySettings}>
-          <div className="form-group">
-            <label>Pharmacy name</label>
-            <input
-              value={pharmacyForm.pharmacy_name}
-              onChange={(e) => setPharmacyForm({ ...pharmacyForm, pharmacy_name: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Address</label>
-            <textarea
-              rows={2}
-              value={pharmacyForm.pharmacy_address}
-              onChange={(e) => setPharmacyForm({ ...pharmacyForm, pharmacy_address: e.target.value })}
-              placeholder="Street, city"
-            />
-          </div>
-          <div className="form-group">
-            <label>Phone</label>
-            <input
-              value={pharmacyForm.pharmacy_phone}
-              onChange={(e) => setPharmacyForm({ ...pharmacyForm, pharmacy_phone: e.target.value })}
-              placeholder="+1 234 567 8900"
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={savingPharmacy}>
-            {savingPharmacy ? 'Saving...' : 'Save Receipt Details'}
-          </button>
-        </form>
-        {pharmacyMessage && (
-          <div className={`alert ${pharmacyMessage.includes('saved') ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 12, marginBottom: 0 }}>
-            {pharmacyMessage}
-          </div>
-        )}
-      </div>
-
-      <div className="card mb-16">
-        <div className="card-title">Default Delivery Fee</div>
-        <form onSubmit={saveDeliveryFee} className="filter-bar" style={{ marginBottom: 0 }}>
-          <div className="form-group">
-            <label>Amount ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={deliveryFee}
-              onChange={(e) => setDeliveryFee(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={savingFee}>
-            {savingFee ? 'Saving...' : 'Save'}
-          </button>
-        </form>
-        {feeMessage && (
-          <div className={`alert ${feeMessage.includes('saved') ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 12, marginBottom: 0 }}>
-            {feeMessage}
-          </div>
-        )}
-        <p className="text-muted mt-8" style={{ marginBottom: 0 }}>
-          Cashiers can apply this fee at checkout for delivery orders. They can adjust the amount per sale if needed.
-        </p>
-      </div>
-
-      <div className="card mb-16">
-        <div className="card-title">Default Doctor Fee</div>
-        <form onSubmit={saveDoctorFee} className="filter-bar" style={{ marginBottom: 0 }}>
-          <div className="form-group">
-            <label>Amount</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={doctorFee}
-              onChange={(e) => setDoctorFee(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={savingDoctorFee}>
-            {savingDoctorFee ? 'Saving...' : 'Save'}
-          </button>
-        </form>
-        {doctorFeeMessage && (
-          <div className={`alert ${doctorFeeMessage.includes('saved') ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 12, marginBottom: 0 }}>
-            {doctorFeeMessage}
-          </div>
-        )}
-        <p className="text-muted mt-8" style={{ marginBottom: 0 }}>
-          Pre-filled when a patient visit is started at the Point of Sale. Staff can change it per visit.
-        </p>
-      </div>
-
-      <div className="mb-16">
-        <Calendar />
+      <div className="stat-grid">
+        <Stat label={`${t('common.today')} · ${t('dash.revenue')}`} value={money(today.revenue)}
+          sub={`${today.sales} ${t('dash.sales')} ${change(today.revenue, yesterday.revenue) ? `· ${change(today.revenue, yesterday.revenue)} vs ${t('common.yesterday')}` : ''}`} tone="primary" />
+        <Stat label={`${t('common.today')} · ${t('dash.profit')}`} value={money(today.profit)} tone="ok" />
+        <Stat label={`${t('common.thisMonth')} · ${t('dash.revenue')}`} value={money(month.revenue)} sub={`${month.sales} ${t('dash.sales')} · ${t('dash.profit')} ${money(month.profit)}`} />
+        <Stat label={t('dash.outstanding')} value={money(summary.outstanding_credit)} tone="warning" />
+        <Stat label={t('dash.stockValue')} value={money(summary.stock_value)} sub={summary.expired_stock_value > 0 ? `${t('dash.expiredValue')}: ${money(summary.expired_stock_value)}` : null} />
       </div>
 
       <div className="grid-2">
         <div className="card">
-          <div className="card-title">Revenue & Profit (Last 14 Days)</div>
+          <div className="card-title">{t('dash.chart')}</div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sales_by_day}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+              <LineChart data={chartData} margin={{ left: 0, right: 8, top: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: c.text }} />
+                <YAxis tick={{ fontSize: 11, fill: c.text }} tickFormatter={compact} width={44} />
+                <Tooltip formatter={(v) => money(v)} contentStyle={{ background: c.tip, border: `1px solid ${c.grid}` }} labelStyle={{ color: c.text }} />
                 <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#2980b9" name="Revenue" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="profit" stroke="#27ae60" name="Profit" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="revenue" stroke={c.main} name={t('dash.revenue')} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="profit" stroke={c.second} name={t('dash.profit')} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-
         <div className="card">
-          <div className="card-title">Best-Selling Medicines</div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={best_selling.slice(0, 8)} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Bar dataKey="quantity_sold" fill="#2980b9" name="Units Sold" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="card-title">{t('dash.best')}</div>
+          {data.best_selling.length === 0 ? <Empty>{t('common.noResults')}</Empty> : (
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.best_selling.slice(0, 8)} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: c.text }} tickFormatter={compact} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: c.text }} />
+                  <Tooltip formatter={(v) => money(v)} contentStyle={{ background: c.tip, border: `1px solid ${c.grid}` }} labelStyle={{ color: c.text }} />
+                  <Bar dataKey="revenue" fill={c.main} name={t('dash.revenue')} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-title">Low Stock Alerts (≤ 10 units)</div>
-          {low_stock.length === 0 ? (
-            <div className="empty-state">No low stock items</div>
-          ) : (
+      <div className="grid-3">
+        <div className="card card-flush">
+          <div className="card-title pad">{t('dash.lowStock')} <Link to="/inventory" className="small">→</Link></div>
+          {data.low_stock.length === 0 ? <Empty>{t('common.none')}</Empty> : (
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th className="num">Stock</th>
-                  <th>Expiry</th>
-                </tr>
-              </thead>
               <tbody>
-                {low_stock.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.name}</td>
-                    <td className="num"><span className="badge badge-low">{m.stock_quantity}</span></td>
-                    <td>{m.expiry_date}</td>
+                {data.low_stock.slice(0, 10).map((m) => (
+                  <tr key={m.id}><td>{m.name}</td><td className="num"><span className="badge badge-low">{describeQuantity(m.stock_quantity, m, t)}</span></td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="card card-flush">
+          <div className="card-title pad">{t('dash.expiringSoon')} <Link to="/reports" className="small">→</Link></div>
+          {data.expiring_soon.length === 0 ? <Empty>{t('common.none')}</Empty> : (
+            <table className="data-table">
+              <tbody>
+                {data.expiring_soon.slice(0, 10).map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.medicine_name}<div className="text-muted small">{b.batch_number} · {b.quantity}</div></td>
+                    <td className="num">{formatDate(b.expiry_date)}<div><ExpiryBadge status={b.expiry_status} days={b.days_to_expiry} /></div></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-
-        <div className="card">
-          <div className="card-title">Expiring Soon (30 days)</div>
-          {expiring_soon.length === 0 ? (
-            <div className="empty-state">No medicines expiring soon</div>
-          ) : (
+        <div className="card card-flush">
+          <div className="card-title pad">{t('dash.methods')}</div>
+          {data.payment_methods_this_month.length === 0 ? <Empty>{t('common.none')}</Empty> : (
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th className="num">Stock</th>
-                  <th>Expiry</th>
-                  <th className="num">Days Left</th>
-                </tr>
-              </thead>
               <tbody>
-                {expiring_soon.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.name}</td>
-                    <td className="num">{m.stock_quantity}</td>
-                    <td>{m.expiry_date}</td>
-                    <td className="num"><span className="badge badge-warning">{m.days_to_expiry}</span></td>
-                  </tr>
+                {data.payment_methods_this_month.sort((a, b) => b.amount - a.amount).map((m) => (
+                  <tr key={m.method}><td>{t(`pay.${m.method}`)}</td><td className="num">{m.count}</td><td className="num strong">{formatNumber(m.amount)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -315,29 +129,23 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {expired.length > 0 && (
-        <div className="card">
-          <div className="card-title">Expired Medicines (Cannot Be Sold)</div>
+      {data.expired.length > 0 && (
+        <div className="card card-flush card-danger">
+          <div className="card-title pad">{t('dash.expired')}</div>
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th className="num">Stock</th>
-                <th>Expiry</th>
-              </tr>
-            </thead>
             <tbody>
-              {expired.map((m) => (
-                <tr key={m.id}>
-                  <td>{m.name}</td>
-                  <td className="num">{m.stock_quantity}</td>
-                  <td><span className="badge badge-expired">{m.expiry_date}</span></td>
-                </tr>
+              {data.expired.map((b) => (
+                <tr key={b.id}><td>{b.medicine_name}</td><td>{b.batch_number}</td><td className="num">{b.quantity}</td><td><span className="badge badge-danger">{formatDate(b.expiry_date)}</span></td></tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <div className="card">
+        <div className="card-title">{t('dash.calendar')}</div>
+        <Calendar />
+      </div>
     </div>
   )
 }
