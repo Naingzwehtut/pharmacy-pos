@@ -8,6 +8,9 @@ A full-stack point-of-sale and patient-management system for pharmacies and smal
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+
+> **Desktop app:** this version also runs offline as a Windows program, `ZwePOS.exe`, with all data and investigation images stored on the computer. See [desktop/README.md](desktop/README.md).
+
 ## Contents
 
 - [Features](#features)
