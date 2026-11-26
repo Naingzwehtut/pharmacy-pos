@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -8,6 +9,12 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  // Desktop app, first run: no accounts yet, so go to the setup screen
+  useEffect(() => {
+    api.systemStatus().then((s) => s.needs_setup && navigate('/setup', { replace: true })).catch(() => {})
+  }, [navigate])
 
   if (user) return <Navigate to="/pos" replace />
 

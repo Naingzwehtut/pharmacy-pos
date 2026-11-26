@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Website: VITE_API_URL. Desktop app: the same local server ('/api').
+// The Vite dev server (port 5173) talks to the Flask dev server on port 5000.
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (window.location.port === '5173' ? 'http://localhost:5000/api' : '/api')
 
 function getToken() {
   return localStorage.getItem('token')
@@ -100,6 +104,20 @@ export const api = {
   getInvestigationFile: (patientId, invId) =>
     requestBlob(`/patients/${patientId}/investigations/${invId}/file`),
   getDashboard: () => request('/dashboard'),
+  // desktop app
+  systemStatus: () => request('/system/status'),
+  setupOwner: (data) => request('/system/setup', { method: 'POST', body: JSON.stringify(data) }),
+  importCloud: (data) => request('/system/import-cloud', { method: 'POST', body: JSON.stringify(data) }),
+  systemInfo: () => request('/system/info'),
+  createBackup: () => request('/system/backups', { method: 'POST' }),
+  downloadBackup: (name) => requestBlob(`/system/backups/${encodeURIComponent(name)}`),
+  setBackupFolder: (path) => request('/system/backup-folder', { method: 'PUT', body: JSON.stringify({ path }) }),
+  restoreBackup: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/system/restore', { method: 'POST', body: form })
+  },
+  openFolder: (which) => request('/system/open-folder', { method: 'POST', body: JSON.stringify({ which }) }),
   getCalendarStats: (year, month) =>
     request(`/dashboard/calendar?year=${year}&month=${month}`),
 }

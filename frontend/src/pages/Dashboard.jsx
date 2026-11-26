@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { api } from '../api'
 import Calendar from './Calendar'
+import DataBackup from '../components/DataBackup'
 
 export default function Dashboard() {
   const [data, setData] = useState(null)
@@ -222,6 +223,7 @@ export default function Dashboard() {
       </div>
 
       <div className="mb-16">
+        <DataBackup />
         <Calendar />
       </div>
 

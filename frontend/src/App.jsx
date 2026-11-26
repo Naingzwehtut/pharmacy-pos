@@ -11,6 +11,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 import SalesHistory from './pages/SalesHistory'
 import Patients from './pages/Patients'
 import PatientDetail from './pages/PatientDetail'
+import Setup from './pages/Setup'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -31,6 +32,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/setup" element={<Setup />} />
       <Route
         path="/"
         element={
