@@ -1,4 +1,6 @@
-from flask import Flask
+import os
+
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
@@ -25,6 +27,7 @@ def create_app(config_class=Config):
     from app.routes.dashboard import dashboard_bp
     from app.routes.settings import settings_bp
     from app.routes.patients import patients_bp
+    from app.routes.system import system_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(medicines_bp, url_prefix="/api/medicines")
@@ -32,6 +35,7 @@ def create_app(config_class=Config):
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     app.register_blueprint(settings_bp, url_prefix="/api/settings")
     app.register_blueprint(patients_bp, url_prefix="/api/patients")
+    app.register_blueprint(system_bp, url_prefix="/api/system")
 
     @app.errorhandler(413)
     def too_large(_e):
@@ -40,6 +44,18 @@ def create_app(config_class=Config):
 
     @app.route("/api/health")
     def health():
-        return {"status": "ok"}
+        return {"status": "ok", "app": "zwe-pos"}
+
+    dist = app.config.get("FRONTEND_DIST")
+    if dist and os.path.isdir(dist):
+        # Desktop app: the same local server also serves the React app
+        @app.route("/", defaults={"path": ""})
+        @app.route("/<path:path>")
+        def frontend(path):
+            if path.startswith("api/"):
+                return {"error": "Not found"}, 404
+            if path and os.path.isfile(os.path.join(dist, path)):
+                return send_from_directory(dist, path)
+            return send_from_directory(dist, "index.html")
 
     return app
