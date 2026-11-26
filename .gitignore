@@ -21,3 +21,8 @@ pharmacy_pos.db
 
 # Local investigation uploads (development only)
 backend/uploads/
+
+# Desktop build output
+desktop/build/
+desktop/dist/
+desktop/.venv/
